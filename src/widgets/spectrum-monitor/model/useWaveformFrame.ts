@@ -26,6 +26,7 @@ export interface WaveformMonitorState {
 const CANVAS_WIDTH = 320;
 const CANVAS_HEIGHT = 84;
 const HALF_CANVAS_HEIGHT = CANVAS_HEIGHT / 2;
+const DISPLAY_BAR_COUNT = 32;
 
 const buildSvgWaveformPath = (samples: Float32Array): string => {
   const length = samples.length;
@@ -46,31 +47,29 @@ const buildSvgWaveformPath = (samples: Float32Array): string => {
   return parts.join(' ');
 };
 
-const computeSpectrumBars = (
-  samples: Float32Array
+const buildSpectrumBarsFromNativeBins = (
+  magnitudes: Float32Array
 ): readonly SpectrumBarPoint[] => {
-  const barCount = 32;
-  const barSlotWidth = CANVAS_WIDTH / barCount;
+  const barSlotWidth = CANVAS_WIDTH / DISPLAY_BAR_COUNT;
   const barWidth = Math.max(2, barSlotWidth - 3);
-  const N = samples.length;
+  const binsPerBar = Math.max(
+    1,
+    Math.floor(magnitudes.length / DISPLAY_BAR_COUNT)
+  );
   const bars: SpectrumBarPoint[] = [];
 
-  for (let b = 0; b < barCount; b += 1) {
-    const k = b + 1;
-    let realSum = 0;
-    let imagSum = 0;
-    const angularFreq = (2 * Math.PI * k) / N;
-
-    for (let n = 0; n < N; n += 1) {
-      const s = samples[n] ?? 0;
-      const angle = angularFreq * n;
-      realSum += s * Math.cos(angle);
-      imagSum -= s * Math.sin(angle);
+  for (let b = 0; b < DISPLAY_BAR_COUNT; b += 1) {
+    let peakMagnitude = 0;
+    const startBin = b * binsPerBar;
+    const endBin = Math.min(magnitudes.length, startBin + binsPerBar);
+    for (let k = startBin; k < endBin; k += 1) {
+      const val = magnitudes[k] ?? 0;
+      if (val > peakMagnitude) {
+        peakMagnitude = val;
+      }
     }
 
-    const magnitude =
-      Math.sqrt(realSum * realSum + imagSum * imagSum) / (N * 0.25);
-    const normalized = Math.max(0.04, Math.min(1, magnitude));
+    const normalized = Math.max(0.04, Math.min(1, peakMagnitude));
     const barHeight = Math.round(normalized * (CANVAS_HEIGHT - 12));
 
     bars.push({
@@ -93,11 +92,14 @@ export const useWaveformFrame = (
     `M 0 ${HALF_CANVAS_HEIGHT} L ${CANVAS_WIDTH} ${HALF_CANVAS_HEIGHT}`
   );
   const [spectrumBars, setSpectrumBars] = useState<readonly SpectrumBarPoint[]>(
-    () => computeSpectrumBars(new Float32Array(SPECTRUM_BIN_COUNT))
+    () => buildSpectrumBarsFromNativeBins(new Float32Array(SPECTRUM_BIN_COUNT))
   );
 
-  const bufferRef = useRef<Float32Array>(
+  const waveformBufferRef = useRef<Float32Array>(
     new Float32Array(WAVEFORM_SNAPSHOT_SIZE)
+  );
+  const spectrumBufferRef = useRef<Float32Array>(
+    new Float32Array(SPECTRUM_BIN_COUNT)
   );
 
   const toggleMode = useCallback(() => {
@@ -110,12 +112,14 @@ export const useWaveformFrame = (
     }
 
     const intervalId = setInterval(() => {
-      const target = bufferRef.current;
-      nativeStrunaEngine.getWaveformSnapshot(target);
       if (mode === 'waveform') {
-        setSvgWaveformPath(buildSvgWaveformPath(target));
+        const waveformTarget = waveformBufferRef.current;
+        nativeStrunaEngine.getWaveformSnapshot(waveformTarget);
+        setSvgWaveformPath(buildSvgWaveformPath(waveformTarget));
       } else {
-        setSpectrumBars(computeSpectrumBars(target));
+        const spectrumTarget = spectrumBufferRef.current;
+        nativeStrunaEngine.getSpectrumSnapshot(spectrumTarget);
+        setSpectrumBars(buildSpectrumBarsFromNativeBins(spectrumTarget));
       }
     }, JSI_POLL_INTERVAL_MS * 2);
 

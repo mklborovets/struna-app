@@ -15,12 +15,14 @@ import { PitchReading, PitchStreamState, TuningStatus } from './types';
 export interface UsePitchStreamParams {
   readonly referenceA4Hz?: number;
   readonly lockedTargetFrequencyHz?: number | null;
+  readonly candidateTargetFrequenciesHz?: readonly number[];
   readonly enabled?: boolean;
 }
 
 export const usePitchStream = ({
   referenceA4Hz = DEFAULT_REFERENCE_A4_HZ,
   lockedTargetFrequencyHz = null,
+  candidateTargetFrequenciesHz,
   enabled = true,
 }: UsePitchStreamParams = {}): PitchStreamState => {
   const frequencyShared = useSharedValue<number>(0);
@@ -74,7 +76,8 @@ export const usePitchStream = ({
       const nextReading = convertFrequencyToPitchReading(
         frame.frequencyHz,
         referenceA4Hz,
-        lockedTargetFrequencyHz
+        lockedTargetFrequencyHz,
+        candidateTargetFrequenciesHz
       );
 
       if (!nextReading) {
@@ -85,7 +88,7 @@ export const usePitchStream = ({
       centsShared.value = clampCentsForGauge(nextReading.cents);
 
       const nextStatus = resolveTuningStatus(nextReading.cents, true);
-      const summaryKey = `${nextReading.noteName}${nextReading.octave}:${nextReading.cents.toFixed(1)}:${nextStatus}`;
+      const summaryKey = `${nextReading.noteName}${nextReading.octave}:${nextReading.cents.toFixed(1)}:${nextStatus}:${Math.round(nextReading.frequencyHz * 10)}`;
 
       if (lastSummaryKeyRef.current !== summaryKey) {
         lastSummaryKeyRef.current = summaryKey;
@@ -101,6 +104,7 @@ export const usePitchStream = ({
       clearInterval(intervalId);
     };
   }, [
+    candidateTargetFrequenciesHz,
     centsShared,
     confidenceShared,
     enabled,

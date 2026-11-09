@@ -37,7 +37,7 @@ export const computeMidiNoteFrequencyHz = (
       2,
       (midiNote - MIDI_A4_NOTE_NUMBER) / SEMITONES_PER_OCTAVE
     );
-  return Math.round(exactHz * 100) / 100;
+  return Math.round(exactHz * 10000) / 10000;
 };
 
 const RAW_PRESETS: readonly RawPresetDefinition[] = [

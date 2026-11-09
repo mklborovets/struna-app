@@ -63,17 +63,51 @@ export const isWithinCloseTuneRange = (cents: number): boolean => {
   return Math.abs(cents) <= CLOSE_TUNE_THRESHOLD_CENTS;
 };
 
+export const resolveClosestTargetFrequency = (
+  frequencyHz: number,
+  candidateTargetsHz: readonly number[]
+): number | null => {
+  if (frequencyHz <= 0 || candidateTargetsHz.length === 0) {
+    return null;
+  }
+  let closestHz: number | null = null;
+  let smallestAbsCents = Number.POSITIVE_INFINITY;
+
+  for (const candidateHz of candidateTargetsHz) {
+    if (candidateHz <= 0) {
+      continue;
+    }
+    const absCents = Math.abs(calculateCentsDeviation(frequencyHz, candidateHz));
+    if (absCents < smallestAbsCents) {
+      smallestAbsCents = absCents;
+      closestHz = candidateHz;
+    }
+  }
+
+  return closestHz;
+};
+
 export const convertFrequencyToPitchReading = (
   frequencyHz: number,
   referenceA4Hz: number,
-  lockedTargetHz?: number | null
+  lockedTargetHz?: number | null,
+  candidateTargetsHz?: readonly number[]
 ): PitchReading | null => {
   if (frequencyHz <= 0 || referenceA4Hz <= 0) {
     return null;
   }
 
+  const matchedPresetTargetHz =
+    lockedTargetHz && lockedTargetHz > 0
+      ? lockedTargetHz
+      : candidateTargetsHz && candidateTargetsHz.length > 0
+        ? resolveClosestTargetFrequency(frequencyHz, candidateTargetsHz)
+        : null;
+
   const effectiveFrequencyForMidi =
-    lockedTargetHz && lockedTargetHz > 0 ? lockedTargetHz : frequencyHz;
+    matchedPresetTargetHz && matchedPresetTargetHz > 0
+      ? matchedPresetTargetHz
+      : frequencyHz;
 
   const exactMidiNote =
     MIDI_A4_NOTE_NUMBER +
@@ -81,8 +115,8 @@ export const convertFrequencyToPitchReading = (
   const nearestMidiNote = Math.round(exactMidiNote);
 
   const targetFrequencyHz =
-    lockedTargetHz && lockedTargetHz > 0
-      ? lockedTargetHz
+    matchedPresetTargetHz && matchedPresetTargetHz > 0
+      ? matchedPresetTargetHz
       : referenceA4Hz *
         Math.pow(
           2,
@@ -98,8 +132,8 @@ export const convertFrequencyToPitchReading = (
   const resolvedNoteName = NOTE_NAMES[noteIndex] ?? 'A';
 
   return {
-    frequencyHz: Math.round(frequencyHz * 100) / 100,
-    targetFrequencyHz: Math.round(targetFrequencyHz * 100) / 100,
+    frequencyHz,
+    targetFrequencyHz,
     cents,
     noteName: resolvedNoteName,
     octave,

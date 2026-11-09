@@ -10,6 +10,7 @@ export {
   clampCentsForGauge,
   convertFrequencyToPitchReading,
   isWithinCloseTuneRange,
+  resolveClosestTargetFrequency,
   resolveTuningStatus,
 } from './lib/noteFrequencyMath';
 export { usePitchStream } from './model/usePitchStream';
