@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   PitchReading,
   TuningStatus,
@@ -14,6 +14,8 @@ import { sessionRepository } from '@/entities/tuning-session';
 import { useCalibrationControl } from '@/features/calibrate-a4';
 import { useTuningSelection } from '@/features/select-tuning';
 import { useStringLock } from '@/features/toggle-string-lock';
+import { useAudioLifecycle } from '@/shared/lib/audio-session/useAppStateAudioGuard';
+import { MicrophonePermissionStatus } from '@/shared/lib/permissions/useMicrophonePermission';
 import { useStringMatching } from '@/widgets/fretboard-selector';
 import {
   GaugeInterpolationResult,
@@ -26,6 +28,10 @@ import {
 } from '@/widgets/spectrum-monitor';
 
 export interface TunerPageViewModel {
+  readonly permissionStatus: MicrophonePermissionStatus;
+  readonly isPermissionGranted: boolean;
+  readonly requestMicrophonePermission: () => void;
+  readonly openSystemSettings: () => void;
   readonly activePreset: TuningPreset;
   readonly availablePresets: readonly TuningPreset[];
   readonly isMenuOpen: boolean;
@@ -82,6 +88,14 @@ const formatFrequencyLabel = (
 
 export const useTunerPageModel = (): TunerPageViewModel => {
   const {
+    permissionStatus,
+    isPermissionGranted,
+    isCapturing,
+    requestPermission,
+    openSystemSettings,
+  } = useAudioLifecycle();
+
+  const {
     activePreset,
     availablePresets,
     isMenuOpen,
@@ -107,12 +121,21 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     toggleLockMode,
   } = useStringLock();
 
+  const candidateTargetFrequenciesHz = useMemo<readonly number[]>(
+    () =>
+      activePreset.isChromatic
+        ? []
+        : activePreset.strings.map((guitarString) => guitarString.frequencyHz),
+    [activePreset.isChromatic, activePreset.strings]
+  );
+
   const pitchStream = usePitchStream({
     referenceA4Hz,
     lockedTargetFrequencyHz: lockedGuitarString
       ? lockedGuitarString.frequencyHz
       : null,
-    enabled: true,
+    candidateTargetFrequenciesHz,
+    enabled: isCapturing,
   });
 
   const currentFreq = pitchStream.reading?.frequencyHz ?? 0;
@@ -136,7 +159,15 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     cents: effectiveCents,
   });
 
-  const waveformMonitor = useWaveformFrame(true);
+  const waveformMonitor = useWaveformFrame(isCapturing);
+
+  const handleRequestPermission = useCallback(() => {
+    void requestPermission();
+  }, [requestPermission]);
+
+  const handleOpenSettings = useCallback(() => {
+    void openSystemSettings();
+  }, [openSystemSettings]);
 
   const recordCurrentTuningToHistory = useCallback(() => {
     if (!pitchStream.reading) {
@@ -148,10 +179,14 @@ export const useTunerPageModel = (): TunerPageViewModel => {
       presetName: activePreset.shortLabel,
       stringLabel: targetString ? targetString.label : 'CHM',
       noteName: `${pitchStream.reading.noteName}${pitchStream.reading.octave}`,
-      targetFrequencyHz: targetString
-        ? targetString.frequencyHz
-        : pitchStream.reading.targetFrequencyHz,
-      measuredFrequencyHz: pitchStream.reading.frequencyHz,
+      targetFrequencyHz:
+        Math.round(
+          (targetString
+            ? targetString.frequencyHz
+            : pitchStream.reading.targetFrequencyHz) * 100
+        ) / 100,
+      measuredFrequencyHz:
+        Math.round(pitchStream.reading.frequencyHz * 100) / 100,
       centsDeviation: effectiveCents,
       referenceA4Hz,
     });
@@ -165,6 +200,10 @@ export const useTunerPageModel = (): TunerPageViewModel => {
   ]);
 
   return {
+    permissionStatus,
+    isPermissionGranted,
+    requestMicrophonePermission: handleRequestPermission,
+    openSystemSettings: handleOpenSettings,
     activePreset,
     availablePresets,
     isMenuOpen,

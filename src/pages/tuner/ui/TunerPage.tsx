@@ -5,6 +5,7 @@ import { CalibrationStepper } from '@/features/calibrate-a4';
 import { TuningDropdown } from '@/features/select-tuning';
 import { StringLockSwitch } from '@/features/toggle-string-lock';
 import { THEME_COLORS } from '@/shared/config/theme';
+import { Surface } from '@/shared/ui/Surface';
 import { FretboardSelector } from '@/widgets/fretboard-selector';
 import { PitchGauge } from '@/widgets/pitch-gauge';
 import { SpectrumCanvas } from '@/widgets/spectrum-monitor';
@@ -19,6 +20,32 @@ export const TunerPage: React.FC = () => {
       contentContainerStyle={styles.content}
       bounces={false}
     >
+      {!vm.isPermissionGranted && vm.permissionStatus !== 'checking' ? (
+        <Surface style={styles.permissionBanner}>
+          <View style={styles.permissionTextBlock}>
+            <Text style={styles.permissionTitle}>
+              MICROPHONE ACCESS REQUIRED
+            </Text>
+            <Text style={styles.permissionDescription}>
+              Grant microphone permission to analyze guitar string frequencies
+              in real time.
+            </Text>
+          </View>
+          <Pressable
+            style={styles.permissionActionButton}
+            onPress={
+              vm.permissionStatus === 'blocked'
+                ? vm.openSystemSettings
+                : vm.requestMicrophonePermission
+            }
+          >
+            <Text style={styles.permissionActionText}>
+              {vm.permissionStatus === 'blocked' ? 'SETTINGS' : 'ALLOW MIC'}
+            </Text>
+          </Pressable>
+        </Surface>
+      ) : null}
+
       <View style={styles.topControlsBar}>
         <TuningDropdown
           activePreset={vm.activePreset}
@@ -101,6 +128,40 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 28,
     gap: 14,
+  },
+  permissionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderColor: THEME_COLORS.accentWarning,
+    gap: 12,
+  },
+  permissionTextBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  permissionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME_COLORS.accentWarning,
+    letterSpacing: 0.8,
+  },
+  permissionDescription: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: THEME_COLORS.textSecondary,
+  },
+  permissionActionButton: {
+    backgroundColor: THEME_COLORS.accentWarning,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  permissionActionText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME_COLORS.backgroundPrimary,
+    letterSpacing: 0.6,
   },
   topControlsBar: {
     flexDirection: 'row',

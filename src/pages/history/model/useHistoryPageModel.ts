@@ -20,11 +20,16 @@ export const useHistoryPageModel = (): HistoryPageViewModel => {
 
   const clearAllHistory = useCallback(() => {
     sessionRepository.clearAllSessions();
-    setRecords([]);
   }, []);
 
   useEffect(() => {
     refreshHistory();
+    const unsubscribe = sessionRepository.subscribe(() => {
+      refreshHistory();
+    });
+    return () => {
+      unsubscribe();
+    };
   }, [refreshHistory]);
 
   return {

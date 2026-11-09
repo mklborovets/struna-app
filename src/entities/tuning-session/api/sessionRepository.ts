@@ -32,6 +32,13 @@ const CREATE_PREFERENCES_TABLE_SQL = `
   );
 `;
 
+type SessionListener = () => void;
+const sessionListeners = new Set<SessionListener>();
+
+const emitSessionsChanged = (): void => {
+  sessionListeners.forEach((listener) => listener());
+};
+
 const mapRowToSessionRecord = (row: SqlQueryResultRow): TuningSessionRecord => {
   return {
     id: Number(row.id ?? 0),
@@ -48,6 +55,13 @@ const mapRowToSessionRecord = (row: SqlQueryResultRow): TuningSessionRecord => {
 };
 
 export const sessionRepository = {
+  subscribe(listener: SessionListener): () => void {
+    sessionListeners.add(listener);
+    return () => {
+      sessionListeners.delete(listener);
+    };
+  },
+
   initializeSchema(): void {
     sqliteClient.executeSql(CREATE_SESSIONS_TABLE_SQL);
     sqliteClient.executeSql(CREATE_PREFERENCES_TABLE_SQL);
@@ -79,6 +93,7 @@ export const sessionRepository = {
         nowIso,
       ]
     );
+    emitSessionsChanged();
   },
 
   getRecentSessions(limit: number = 50): readonly TuningSessionRecord[] {
@@ -104,6 +119,7 @@ export const sessionRepository = {
 
   clearAllSessions(): void {
     sqliteClient.executeSql('DELETE FROM tuning_sessions;');
+    emitSessionsChanged();
   },
 
   savePreferences(preferences: PersistedUserPreferences): void {

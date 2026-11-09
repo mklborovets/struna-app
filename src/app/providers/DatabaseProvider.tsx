@@ -46,17 +46,12 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
     setSessions(latest);
   }, []);
 
-  const logTunedString = useCallback(
-    (input: CreateTuningSessionInput) => {
-      sessionRepository.recordTunedString(input);
-      refreshSessions();
-    },
-    [refreshSessions]
-  );
+  const logTunedString = useCallback((input: CreateTuningSessionInput) => {
+    sessionRepository.recordTunedString(input);
+  }, []);
 
   const clearHistory = useCallback(() => {
     sessionRepository.clearAllSessions();
-    setSessions([]);
   }, []);
 
   useEffect(() => {
@@ -71,7 +66,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
     refreshSessions();
     setIsReady(true);
 
-    const unsubscribe = tuningStore.subscribe(() => {
+    const unsubscribeTuning = tuningStore.subscribe(() => {
       const snapshot = tuningStore.getSnapshot();
       sessionRepository.savePreferences({
         presetId: snapshot.selectedPresetId,
@@ -79,8 +74,13 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
       });
     });
 
+    const unsubscribeSessions = sessionRepository.subscribe(() => {
+      refreshSessions();
+    });
+
     return () => {
-      unsubscribe();
+      unsubscribeTuning();
+      unsubscribeSessions();
     };
   }, [refreshSessions]);
 
