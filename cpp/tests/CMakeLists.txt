@@ -27,3 +27,4 @@ endif()
 
 add_test(NAME RingBufferAndRmsGateTests COMMAND struna_dsp_tests --suite=ring_rms)
 add_test(NAME SyntheticSineGenerator440HzTest COMMAND struna_dsp_tests --suite=generator)
+add_test(NAME AutocorrelationOctaveErrorBenchmark COMMAND struna_dsp_tests --suite=autocorr)

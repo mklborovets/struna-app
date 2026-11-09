@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "AudioTypes.hpp"
+#include "AutocorrelationDetector.hpp"
 #include "RingBuffer.hpp"
 #include "RmsGate.hpp"
 #include "SyntheticSignalGenerator.hpp"
@@ -77,6 +78,32 @@ void testSyntheticSignalGenerator() {
     requireTrue(zeroCrossings >= 18 && zeroCrossings <= 19, "440 Hz sine wave has expected period count in 2048 samples");
 }
 
+void testAutocorrelationOctaveErrorBenchmark() {
+    struna::AutocorrelationDetector<kTestWindowSize> autocorrDetector(kTestSampleRateHz);
+
+    const auto pureLowE = struna::testing::SyntheticSignalGenerator::generatePureSine(
+        82.41f, kTestSampleRateHz, kTestWindowSize, 0.8f);
+    const float pureDetectedHz =
+        autocorrDetector.detectFrequency(pureLowE.data(), pureLowE.size());
+    const float pureCentsError =
+        struna::testing::SyntheticSignalGenerator::computeCentsError(pureDetectedHz, 82.41f);
+    requireTrue(
+        std::fabs(pureCentsError) < 2.0f,
+        "Autocorrelation detects pure 82.41 Hz sine accurately");
+
+    const auto dominantSecondHarmonicE =
+        struna::testing::SyntheticSignalGenerator::generateHarmonicRichTone(
+            82.41f, kTestSampleRateHz, kTestWindowSize, 0.18f, 1.0f, 0.0f);
+    const float harmonicDetectedHz = autocorrDetector.detectFrequency(
+        dominantSecondHarmonicE.data(), dominantSecondHarmonicE.size());
+    const float octaveErrorCents =
+        struna::testing::SyntheticSignalGenerator::computeCentsError(
+            harmonicDetectedHz, 164.82f);
+    requireTrue(
+        std::fabs(octaveErrorCents) < 15.0f,
+        "Standard autocorrelation exhibits expected octave error (164.82 Hz instead of 82.41 Hz)");
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -94,6 +121,9 @@ int main(int argc, char** argv) {
     }
     if (suite == "all" || suite == "generator") {
         testSyntheticSignalGenerator();
+    }
+    if (suite == "all" || suite == "autocorr") {
+        testAutocorrelationOctaveErrorBenchmark();
     }
 
     std::cout << "[PASS] Suite '" << suite << "' completed successfully." << std::endl;
