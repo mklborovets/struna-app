@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STRUNA Acoustic Reference Tone Generator</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --surface: #12161f;
+      --elevated: #161b26;
+      --border: #2a3242;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --warn: #f59e0b;
+      --electric: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 32px 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    h1 { font-size: 22px; letter-spacing: -0.5px; margin-bottom: 6px; }
+    p.sub { font-size: 13px; color: var(--muted); }
+    .strings-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button.string-btn {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 14px 8px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.15s ease;
+    }
+    button.string-btn.active {
+      border-color: var(--accent);
+      background: #132a23;
+      color: var(--accent);
+    }
+    .string-note { font-size: 18px; display: block; }
+    .string-hz { font-size: 11px; color: var(--muted); margin-top: 4px; display: block; }
+    .controls-row {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--electric); }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    button.primary-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #0b0e14;
+    }
+    button.primary-btn.stop {
+      background: #ef4444;
+      color: #fff;
+    }
+    .mode-pills {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .pill {
+      flex: 1;
+      padding: 10px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+    .pill.active {
+      border-color: var(--electric);
+      color: var(--electric);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>STRUNA Reference Signal Synthesizer</h1>
+      <p class="sub">
+        Web Audio API acoustic test bench for verifying ±1 cent accuracy and harmonic octave-error immunity.
+      </p>
+
+      <div class="strings-grid" id="stringsGrid"></div>
+
+      <div class="mode-pills">
+        <div class="pill active" id="modePure">PURE SINE (f0 only)</div>
+        <div class="pill" id="modeGuitar">REALISTIC GUITAR (Dominant 2nd &amp; 3rd Harmonics)</div>
+      </div>
+
+      <div class="controls-row">
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Fine Detune Offset (Cents)</span>
+            <span id="centsDisplay">0.0 cents</span>
+          </div>
+          <input type="range" id="centsSlider" min="-50" max="50" step="0.5" value="0" />
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Output Frequency</span>
+            <span id="freqDisplay">82.41 Hz</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary-btn" id="toggleBtn">START ACOUSTIC TONE</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STRINGS = [
+      { label: '6E', note: 'E2', hz: 82.41 },
+      { label: '5A', note: 'A2', hz: 110.00 },
+      { label: '4D', note: 'D3', hz: 146.83 },
+      { label: '3G', note: 'G3', hz: 196.00 },
+      { label: '2B', note: 'B3', hz: 246.94 },
+      { label: '1e', note: 'E4', hz: 329.63 },
+    ];
+
+    let selectedString = STRINGS[0];
+    let detuneCents = 0;
+    let harmonicMode = 'pure';
+    let audioCtx = null;
+    let oscillators = [];
+    let isPlaying = false;
+
+    const stringsGrid = document.getElementById('stringsGrid');
+    const centsSlider = document.getElementById('centsSlider');
+    const centsDisplay = document.getElementById('centsDisplay');
+    const freqDisplay = document.getElementById('freqDisplay');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const modePure = document.getElementById('modePure');
+    const modeGuitar = document.getElementById('modeGuitar');
+
+    function getEffectiveHz() {
+      return selectedString.hz * Math.pow(2, detuneCents / 1200);
+    }
+
+    function updateReadout() {
+      const f = getEffectiveHz();
+      const sign = detuneCents > 0 ? '+' : '';
+      centsDisplay.textContent = `${sign}${detuneCents.toFixed(1)} cents`;
+      freqDisplay.textContent = `${f.toFixed(2)} Hz`;
+      if (isPlaying) {
+        rebuildOscillators();
+      }
+    }
+
+    function renderStringButtons() {
+      stringsGrid.innerHTML = '';
+      STRINGS.forEach((s) => {
+        const btn = document.createElement('button');
+        btn.className = 'string-btn' + (s.label === selectedString.label ? ' active' : '');
+        btn.innerHTML = `<span class="string-note">${s.note}</span><span class="string-hz">${s.hz.toFixed(2)} Hz</span>`;
+        btn.onclick = () => {
+          selectedString = s;
+          detuneCents = 0;
+          centsSlider.value = '0';
+          renderStringButtons();
+          updateReadout();
+        };
+        stringsGrid.appendChild(btn);
+      });
+    }
+
+    function stopOscillators() {
+      oscillators.forEach((node) => {
+        try { node.osc.stop(); node.osc.disconnect(); node.gain.disconnect(); } catch (e) {}
+      });
+      oscillators = [];
+    }
+
+    function rebuildOscillators() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      stopOscillators();
+      const f0 = getEffectiveHz();
+      const harmonics = harmonicMode === 'pure'
+        ? [{ mult: 1, amp: 0.5 }]
+        : [
+            { mult: 1, amp: 0.14 },
+            { mult: 2, amp: 0.55 },
+            { mult: 3, amp: 0.38 },
+          ];
+
+      harmonics.forEach((h) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f0 * h.mult, audioCtx.currentTime);
+        gain.gain.setValueAtTime(h.amp, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        oscillators.push({ osc, gain });
+      });
+    }
+
+    centsSlider.oninput = (e) => {
+      detuneCents = parseFloat(e.target.value);
+      updateReadout();
+    };
+
+    modePure.onclick = () => {
+      harmonicMode = 'pure';
+      modePure.classList.add('active');
+      modeGuitar.classList.remove('active');
+      updateReadout();
+    };
+
+    modeGuitar.onclick = () => {
+      harmonicMode = 'guitar';
+      modeGuitar.classList.add('active');
+      modePure.classList.remove('active');
+      updateReadout();
+    };
+
+    toggleBtn.onclick = () => {
+      if (isPlaying) {
+        stopOscillators();
+        isPlaying = false;
+        toggleBtn.textContent = 'START ACOUSTIC TONE';
+        toggleBtn.classList.remove('stop');
+      } else {
+        isPlaying = true;
+        rebuildOscillators();
+        toggleBtn.textContent = 'STOP ACOUSTIC TONE';
+        toggleBtn.classList.add('stop');
+      }
+    };
+
+    renderStringButtons();
+    updateReadout();
+  </script>
+</body>
+</html>

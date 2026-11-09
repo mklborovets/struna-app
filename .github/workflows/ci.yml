@@ -1,0 +1,77 @@
+name: STRUNA CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cpp-dsp-tests:
+    name: C++17 DSP Unit Tests (YIN & Autocorrelation)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake Test Suite
+        run: cmake -S cpp/tests -B build/tests
+
+      - name: Build C++ Test Runner
+        run: cmake --build build/tests
+
+      - name: Execute CTest Suite
+        run: ctest --test-dir build/tests --output-on-failure --verbose
+
+  typescript-and-lint:
+    name: TypeScript Strict & FSD Architecture Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Run TypeScript Strict Typecheck
+        run: npm run typecheck
+
+      - name: Run ESLint (Zero Comments & FSD Boundaries)
+        run: npm run lint
+
+  android-debug-apk:
+    name: Build Android Debug Native Lib & APK
+    needs: [cpp-dsp-tests, typescript-and-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install JS Dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Bundle React Native JS Assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
