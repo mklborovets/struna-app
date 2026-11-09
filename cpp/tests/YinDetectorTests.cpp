@@ -9,6 +9,7 @@
 #include "RingBuffer.hpp"
 #include "RmsGate.hpp"
 #include "SyntheticSignalGenerator.hpp"
+#include "YinDetector.hpp"
 
 namespace {
 
@@ -69,13 +70,11 @@ void testSyntheticSignalGenerator() {
     const float rmsDb = struna::RmsGate::computeRmsDb(sine440.data(), sine440.size());
     requireTrue(rmsDb > -6.0f && rmsDb < -4.0f, "440 Hz sine wave with 0.8 amplitude has valid RMS");
 
-    std::size_t zeroCrossings = 0;
-    for (std::size_t i = 1; i < sine440.size(); ++i) {
-        if (sine440[i - 1] <= 0.0f && sine440[i] > 0.0f) {
-            ++zeroCrossings;
-        }
-    }
-    requireTrue(zeroCrossings >= 18 && zeroCrossings <= 19, "440 Hz sine wave has expected period count in 2048 samples");
+    struna::YinDetector detector(kTestSampleRateHz);
+    const auto result = detector.detect(sine440.data(), sine440.size());
+    const float centsError =
+        struna::testing::SyntheticSignalGenerator::computeCentsError(result.frequencyHz, 440.0f);
+    requireTrue(std::fabs(centsError) <= 0.5f, "440 Hz sine wave detected within 0.5 cents");
 }
 
 void testAutocorrelationOctaveErrorBenchmark() {
@@ -104,6 +103,49 @@ void testAutocorrelationOctaveErrorBenchmark() {
         "Standard autocorrelation exhibits expected octave error (164.82 Hz instead of 82.41 Hz)");
 }
 
+void testYinDetectorGuitarStringsPrecision() {
+    struna::YinDetector detector(kTestSampleRateHz);
+    const std::vector<float> standardGuitarFrequencies = {
+        82.41f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f, 440.00f};
+
+    for (float expectedHz : standardGuitarFrequencies) {
+        const auto signal = struna::testing::SyntheticSignalGenerator::generatePureSine(
+            expectedHz, kTestSampleRateHz, kTestWindowSize, 0.85f);
+        const auto result = detector.detect(signal.data(), signal.size());
+        const float centsError =
+            struna::testing::SyntheticSignalGenerator::computeCentsError(
+                result.frequencyHz, expectedHz);
+
+        requireTrue(
+            std::fabs(centsError) <= 0.5f,
+            "YIN detector must achieve +/- 0.5 cent accuracy across all guitar strings");
+        requireTrue(
+            result.confidence >= 0.95f,
+            "YIN detector confidence on pure sine must exceed 0.95");
+    }
+}
+
+void testYinDetectorHarmonicImmunity() {
+    struna::YinDetector detector(kTestSampleRateHz);
+    const std::vector<float> guitarStrings = {
+        82.41f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f};
+
+    for (float fundamentalHz : guitarStrings) {
+        const auto harmonicSignal =
+            struna::testing::SyntheticSignalGenerator::generateHarmonicRichTone(
+                fundamentalHz, kTestSampleRateHz, kTestWindowSize, 0.25f, 1.0f, 0.75f);
+
+        const auto result = detector.detect(harmonicSignal.data(), harmonicSignal.size());
+        const float centsError =
+            struna::testing::SyntheticSignalGenerator::computeCentsError(
+                result.frequencyHz, fundamentalHz);
+
+        requireTrue(
+            std::fabs(centsError) <= 0.5f,
+            "YIN detector must lock onto fundamental f0 despite stronger 2nd and 3rd harmonics");
+    }
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -124,6 +166,12 @@ int main(int argc, char** argv) {
     }
     if (suite == "all" || suite == "autocorr") {
         testAutocorrelationOctaveErrorBenchmark();
+    }
+    if (suite == "all" || suite == "yin_precision") {
+        testYinDetectorGuitarStringsPrecision();
+    }
+    if (suite == "all" || suite == "yin_harmonics") {
+        testYinDetectorHarmonicImmunity();
     }
 
     std::cout << "[PASS] Suite '" << suite << "' completed successfully." << std::endl;

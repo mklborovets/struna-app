@@ -10,6 +10,7 @@ enable_testing()
 add_executable(
     struna_dsp_tests
     YinDetectorTests.cpp
+    ../dsp/YinDetector.cpp
 )
 
 target_include_directories(
@@ -28,3 +29,5 @@ endif()
 add_test(NAME RingBufferAndRmsGateTests COMMAND struna_dsp_tests --suite=ring_rms)
 add_test(NAME SyntheticSineGenerator440HzTest COMMAND struna_dsp_tests --suite=generator)
 add_test(NAME AutocorrelationOctaveErrorBenchmark COMMAND struna_dsp_tests --suite=autocorr)
+add_test(NAME YinDetectorGuitarStringsPrecision COMMAND struna_dsp_tests --suite=yin_precision)
+add_test(NAME YinDetectorHarmonicImmunity COMMAND struna_dsp_tests --suite=yin_harmonics)
