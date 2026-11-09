@@ -11,6 +11,7 @@ add_library(
     struna
     SHARED
     JniBridge.cpp
+    ${STRUNA_ROOT_DIR}/cpp/jsi/StrunaHostObject.cpp
     ${STRUNA_ROOT_DIR}/cpp/dsp/YinDetector.cpp
     ${STRUNA_ROOT_DIR}/cpp/dsp/PitchStabilizer.cpp
 )
@@ -20,6 +21,7 @@ target_include_directories(
     PRIVATE
     ${STRUNA_ROOT_DIR}/cpp/dsp
     ${STRUNA_ROOT_DIR}/cpp/jsi
+    ${STRUNA_ROOT_DIR}/node_modules/react-native/ReactCommon/jsi
 )
 
 target_compile_options(
