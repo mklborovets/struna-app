@@ -85,6 +85,14 @@ export const useStringMatching = ({
       }
     }
 
+    if (smallestAbsCents > 150) {
+      return {
+        matchedString: null,
+        centsFromMatchedString: 0,
+        isMatchedStringInTune: false,
+      };
+    }
+
     return {
       matchedString: closestString,
       centsFromMatchedString: signedCents,

@@ -97,33 +97,34 @@ export const convertFrequencyToPitchReading = (
     return null;
   }
 
-  const matchedPresetTargetHz =
-    lockedTargetHz && lockedTargetHz > 0
-      ? lockedTargetHz
-      : candidateTargetsHz && candidateTargetsHz.length > 0
-        ? resolveClosestTargetFrequency(frequencyHz, candidateTargetsHz)
-        : null;
-
-  const effectiveFrequencyForMidi =
-    matchedPresetTargetHz && matchedPresetTargetHz > 0
-      ? matchedPresetTargetHz
-      : frequencyHz;
-
   const exactMidiNote =
     MIDI_A4_NOTE_NUMBER +
-    SEMITONES_PER_OCTAVE * Math.log2(effectiveFrequencyForMidi / referenceA4Hz);
+    SEMITONES_PER_OCTAVE * Math.log2(frequencyHz / referenceA4Hz);
   const nearestMidiNote = Math.round(exactMidiNote);
 
-  const targetFrequencyHz =
-    matchedPresetTargetHz && matchedPresetTargetHz > 0
-      ? matchedPresetTargetHz
-      : referenceA4Hz *
-        Math.pow(
-          2,
-          (nearestMidiNote - MIDI_A4_NOTE_NUMBER) / SEMITONES_PER_OCTAVE
-        );
+  const standardNoteTargetHz =
+    referenceA4Hz *
+    Math.pow(2, (nearestMidiNote - MIDI_A4_NOTE_NUMBER) / SEMITONES_PER_OCTAVE);
 
-  const cents = calculateCentsDeviation(frequencyHz, targetFrequencyHz);
+  let matchedTargetHz = standardNoteTargetHz;
+  if (lockedTargetHz && lockedTargetHz > 0) {
+    matchedTargetHz = lockedTargetHz;
+  } else if (candidateTargetsHz && candidateTargetsHz.length > 0) {
+    const closestStringHz = resolveClosestTargetFrequency(
+      frequencyHz,
+      candidateTargetsHz
+    );
+    if (closestStringHz !== null) {
+      const centsFromGuitarString = Math.abs(
+        calculateCentsDeviation(frequencyHz, closestStringHz)
+      );
+      if (centsFromGuitarString <= 150) {
+        matchedTargetHz = closestStringHz;
+      }
+    }
+  }
+
+  const cents = calculateCentsDeviation(frequencyHz, matchedTargetHz);
 
   const noteIndex =
     ((nearestMidiNote % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) %
@@ -133,7 +134,7 @@ export const convertFrequencyToPitchReading = (
 
   return {
     frequencyHz,
-    targetFrequencyHz,
+    targetFrequencyHz: matchedTargetHz,
     cents,
     noteName: resolvedNoteName,
     octave,
