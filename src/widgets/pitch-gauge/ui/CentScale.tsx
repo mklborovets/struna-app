@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 import { THEME_COLORS } from '@/shared/config/theme';
-import { GAUGE_TICK_MARKS } from '../model/useGaugeInterpolation';
+import { MAJOR_GAUGE_TICK_MARKS } from '../model/useGaugeInterpolation';
 
 export interface CentScaleProps {
   readonly isInTune: boolean;
@@ -42,7 +42,7 @@ export const CentScale: React.FC<CentScaleProps> = ({ isInTune }) => {
       </Svg>
 
       <View style={styles.labelsRow}>
-        {GAUGE_TICK_MARKS.filter((tick) => tick.isMajor).map((tick) => (
+        {MAJOR_GAUGE_TICK_MARKS.map((tick) => (
           <Text
             key={tick.centsValue}
             style={[

@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   primaryActionText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#0B0E14',
+    color: THEME_COLORS.backgroundPrimary,
     letterSpacing: 1,
   },
 });

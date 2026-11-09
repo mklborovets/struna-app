@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { THEME_COLORS } from '@/shared/config/theme';
 import { Surface } from '@/shared/ui/Surface';
+import { WaveIcon } from '@/shared/ui/icons/WaveIcon';
 import {
   MonitorDisplayMode,
   SpectrumBarPoint,
@@ -26,9 +27,12 @@ export const SpectrumCanvas: React.FC<SpectrumCanvasProps> = ({
   return (
     <Surface style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.titleText}>
-          {mode === 'waveform' ? 'TIME-DOMAIN WAVEFORM' : 'HARMONIC SPECTRUM'}
-        </Text>
+        <View style={styles.titleRow}>
+          <WaveIcon size={14} color={THEME_COLORS.accentElectric} />
+          <Text style={styles.titleText}>
+            {mode === 'waveform' ? 'TIME-DOMAIN WAVEFORM' : 'HARMONIC SPECTRUM'}
+          </Text>
+        </View>
         <View style={styles.rightControls}>
           <Text style={styles.dbText}>{rmsDb} dB</Text>
           <Pressable style={styles.modeButton} onPress={onToggleMode}>
@@ -79,6 +83,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   titleText: {
     fontSize: 10,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { THEME_COLORS } from '@/shared/config/theme';
 import { PitchReading, TuningStatus } from '../model/types';
 
 export interface NoteBadgeProps {
@@ -54,27 +55,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    backgroundColor: '#12161F',
+    backgroundColor: THEME_COLORS.backgroundSurface,
   },
   statusIdle: {
-    borderColor: '#2A3242',
+    borderColor: THEME_COLORS.borderStrong,
   },
   statusActive: {
-    borderColor: '#F59E0B',
+    borderColor: THEME_COLORS.accentWarning,
   },
   statusInTune: {
-    borderColor: '#10B981',
+    borderColor: THEME_COLORS.accentInTune,
   },
   noteText: {
     fontSize: 48,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: THEME_COLORS.textPrimary,
     letterSpacing: -1,
   },
   octaveText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: THEME_COLORS.textMuted,
     marginTop: 18,
     marginLeft: 2,
   },
@@ -86,11 +87,11 @@ const styles = StyleSheet.create({
   frequencyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: THEME_COLORS.textSecondary,
   },
   centsText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#94A3B8',
+    color: THEME_COLORS.textMuted,
   },
 });

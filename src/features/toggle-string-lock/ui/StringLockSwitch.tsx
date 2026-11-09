@@ -1,5 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { THEME_COLORS } from '@/shared/config/theme';
+import { LockIcon } from '@/shared/ui/icons/LockIcon';
+import { UnlockIcon } from '@/shared/ui/icons/UnlockIcon';
 
 export interface StringLockSwitchProps {
   readonly isAutoMode: boolean;
@@ -24,12 +27,11 @@ export const StringLockSwitch: React.FC<StringLockSwitchProps> = ({
       disabled={isDisabled}
       onPress={onToggleLockMode}
     >
-      <View
-        style={[
-          styles.indicatorDot,
-          isAutoMode ? styles.dotAuto : styles.dotLocked,
-        ]}
-      />
+      {isAutoMode ? (
+        <UnlockIcon size={14} color={THEME_COLORS.accentInTune} />
+      ) : (
+        <LockIcon size={14} color={THEME_COLORS.accentWarning} />
+      )}
       <Text style={styles.modeText}>
         {isAutoMode ? 'AUTO' : `LOCK ${lockedLabel ?? ''}`}
       </Text>
@@ -41,36 +43,25 @@ const styles = StyleSheet.create({
   switchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161B26',
+    backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
-    borderColor: '#2A3242',
+    borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 8,
   },
   switchButtonLocked: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#1F1B16',
+    borderColor: THEME_COLORS.accentWarning,
+    backgroundColor: THEME_COLORS.backgroundInteractive,
   },
   switchButtonDisabled: {
     opacity: 0.4,
   },
-  indicatorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dotAuto: {
-    backgroundColor: '#10B981',
-  },
-  dotLocked: {
-    backgroundColor: '#F59E0B',
-  },
   modeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: THEME_COLORS.textPrimary,
     letterSpacing: 0.6,
   },
 });

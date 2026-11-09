@@ -37,6 +37,9 @@ export const GAUGE_TICK_MARKS: readonly GaugeTickMark[] = [
   { centsValue: 50, label: '+50', isMajor: true, isCenter: false },
 ];
 
+export const MAJOR_GAUGE_TICK_MARKS: readonly GaugeTickMark[] =
+  GAUGE_TICK_MARKS.filter((tick) => tick.isMajor);
+
 export interface UseGaugeInterpolationParams {
   readonly centsShared: SharedValue<number>;
   readonly isLockedShared: SharedValue<boolean>;

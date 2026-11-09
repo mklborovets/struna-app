@@ -1,5 +1,6 @@
 export {
   GAUGE_TICK_MARKS,
+  MAJOR_GAUGE_TICK_MARKS,
   useGaugeInterpolation,
 } from './model/useGaugeInterpolation';
 export type {

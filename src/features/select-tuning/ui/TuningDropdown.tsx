@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { TuningPreset, TuningPresetId } from '@/entities/tuning-preset';
+import { THEME_COLORS } from '@/shared/config/theme';
 
 export interface TuningDropdownProps {
   readonly activePreset: TuningPreset;
@@ -60,9 +61,9 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   triggerButton: {
-    backgroundColor: '#161B26',
+    backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
-    borderColor: '#2A3242',
+    borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -71,13 +72,13 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
+    color: THEME_COLORS.textMuted,
     letterSpacing: 1,
   },
   selectedValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: THEME_COLORS.textPrimary,
     marginTop: 2,
   },
   dropdownPanel: {
@@ -85,9 +86,9 @@ const styles = StyleSheet.create({
     top: 56,
     left: 0,
     minWidth: 240,
-    backgroundColor: '#12161F',
+    backgroundColor: THEME_COLORS.backgroundSurface,
     borderWidth: 1,
-    borderColor: '#2A3242',
+    borderColor: THEME_COLORS.borderStrong,
     borderRadius: 12,
     paddingVertical: 6,
     elevation: 8,
@@ -97,15 +98,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   optionRowSelected: {
-    backgroundColor: '#1E293B',
+    backgroundColor: THEME_COLORS.backgroundInteractive,
   },
   optionText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#CBD5E1',
+    color: THEME_COLORS.textSecondary,
   },
   optionTextSelected: {
-    color: '#10B981',
+    color: THEME_COLORS.accentInTune,
     fontWeight: '700',
   },
 });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { THEME_COLORS } from '@/shared/config/theme';
 
 export interface CalibrationStepperProps {
   readonly referenceA4Hz: number;
@@ -57,9 +58,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161B26',
+    backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
-    borderColor: '#2A3242',
+    borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 4,
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: THEME_COLORS.backgroundInteractive,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
   minusBar: {
     width: 12,
     height: 2,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: THEME_COLORS.textPrimary,
     borderRadius: 1,
   },
   plusContainer: {
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 2,
     height: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: THEME_COLORS.textPrimary,
     borderRadius: 1,
   },
   centerBadge: {
@@ -102,12 +103,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#64748B',
+    color: THEME_COLORS.textMuted,
     letterSpacing: 0.8,
   },
   valueText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: THEME_COLORS.textPrimary,
   },
 });
