@@ -6,6 +6,7 @@
 
 #include "AudioTypes.hpp"
 #include "AutocorrelationDetector.hpp"
+#include "PitchStabilizer.hpp"
 #include "RingBuffer.hpp"
 #include "RmsGate.hpp"
 #include "SyntheticSignalGenerator.hpp"
@@ -146,6 +147,35 @@ void testYinDetectorHarmonicImmunity() {
     }
 }
 
+void testPitchStabilizerAttackAndMedian() {
+    struna::PitchStabilizer stabilizer(80.0f, 0.85f, 0.45f);
+
+    const auto attackFrame1 = stabilizer.processFrame(195.0f, 0.92f, -20.0f, true, 30.0f);
+    requireTrue(
+        !attackFrame1.isLocked && attackFrame1.frequencyHz == 0.0f,
+        "First 30ms of transient attack must be suppressed");
+
+    const auto attackFrame2 = stabilizer.processFrame(140.0f, 0.90f, -20.0f, true, 30.0f);
+    requireTrue(
+        !attackFrame2.isLocked && attackFrame2.frequencyHz == 0.0f,
+        "60ms of transient attack must be suppressed");
+
+    const auto postAttack1 = stabilizer.processFrame(82.41f, 0.98f, -18.0f, true, 30.0f);
+    requireNear(postAttack1.frequencyHz, 82.41f, 0.01f, "At 90ms stabilizer outputs valid pitch");
+
+    stabilizer.processFrame(82.41f, 0.98f, -18.0f, true, 30.0f);
+    const auto lockedFrame = stabilizer.processFrame(82.41f, 0.98f, -18.0f, true, 30.0f);
+    requireTrue(lockedFrame.isLocked, "After 3 valid frames stabilizer locks pitch");
+    requireNear(lockedFrame.frequencyHz, 82.41f, 0.01f, "Locked pitch matches 82.41 Hz");
+
+    const auto outlierFrame = stabilizer.processFrame(164.82f, 0.95f, -18.0f, true, 30.0f);
+    requireNear(
+        outlierFrame.frequencyHz,
+        82.41f,
+        0.01f,
+        "Single frame octave jump (164.82 Hz among 82.41 Hz) must be rejected");
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -172,6 +202,9 @@ int main(int argc, char** argv) {
     }
     if (suite == "all" || suite == "yin_harmonics") {
         testYinDetectorHarmonicImmunity();
+    }
+    if (suite == "all" || suite == "stabilizer") {
+        testPitchStabilizerAttackAndMedian();
     }
 
     std::cout << "[PASS] Suite '" << suite << "' completed successfully." << std::endl;

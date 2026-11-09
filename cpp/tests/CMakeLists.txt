@@ -11,6 +11,7 @@ add_executable(
     struna_dsp_tests
     YinDetectorTests.cpp
     ../dsp/YinDetector.cpp
+    ../dsp/PitchStabilizer.cpp
 )
 
 target_include_directories(
@@ -31,3 +32,4 @@ add_test(NAME SyntheticSineGenerator440HzTest COMMAND struna_dsp_tests --suite=g
 add_test(NAME AutocorrelationOctaveErrorBenchmark COMMAND struna_dsp_tests --suite=autocorr)
 add_test(NAME YinDetectorGuitarStringsPrecision COMMAND struna_dsp_tests --suite=yin_precision)
 add_test(NAME YinDetectorHarmonicImmunity COMMAND struna_dsp_tests --suite=yin_harmonics)
+add_test(NAME PitchStabilizerAttackAndMedian COMMAND struna_dsp_tests --suite=stabilizer)
