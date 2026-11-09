@@ -1,0 +1,38 @@
+export const AUDIO_SAMPLE_RATE_HZ = 48000;
+export const AUDIO_RING_BUFFER_CAPACITY = 8192;
+export const YIN_ANALYSIS_WINDOW_SIZE = 2048;
+export const YIN_HALF_WINDOW_SIZE = 1024;
+export const YIN_CONFIDENCE_THRESHOLD = 0.85;
+export const YIN_DIFFERENCE_THRESHOLD = 0.12;
+export const DEFAULT_NOISE_GATE_DB = -52.0;
+
+export const DEFAULT_REFERENCE_A4_HZ = 440;
+export const MIN_REFERENCE_A4_HZ = 415;
+export const MAX_REFERENCE_A4_HZ = 466;
+export const CALIBRATION_STEP_HZ = 1;
+
+export const MIDI_A4_NOTE_NUMBER = 69;
+export const SEMITONES_PER_OCTAVE = 12;
+export const CENTS_PER_OCTAVE = 1200;
+export const CENTS_PER_SEMITONE = 100;
+
+export const IN_TUNE_THRESHOLD_CENTS = 2.0;
+export const CLOSE_TUNE_THRESHOLD_CENTS = 8.0;
+export const GAUGE_MAX_CENTS_RANGE = 50;
+
+export const JSI_POLL_INTERVAL_MS = 33;
+export const WAVEFORM_SNAPSHOT_SIZE = 128;
+export const SPECTRUM_BIN_COUNT = 64;
+
+export const TRANSIENT_ATTACK_SUPPRESSION_MS = 80;
+export const MEDIAN_FILTER_WINDOW_SIZE = 5;
+export const OCTAVE_JUMP_RATIO_MIN = 1.92;
+export const OCTAVE_JUMP_RATIO_MAX = 2.08;
+
+export const DEFAULT_METRONOME_BPM = 120;
+export const MIN_METRONOME_BPM = 30;
+export const MAX_METRONOME_BPM = 280;
+export const METRONOME_BEATS_PER_BAR = 4;
+
+export const MIN_DETECTABLE_FREQUENCY_HZ = 60.0;
+export const MAX_DETECTABLE_FREQUENCY_HZ = 1200.0;
