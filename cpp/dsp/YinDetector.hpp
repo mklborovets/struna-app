@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include "AudioTypes.hpp"
 
@@ -40,7 +41,8 @@ private:
 
     std::size_t findAbsoluteThresholdLag(
         std::size_t minLag,
-        std::size_t maxLag) const noexcept;
+        std::size_t maxLag,
+        float threshold) const noexcept;
 
     std::size_t refineSubharmonicLag(
         std::size_t candidateLag,
@@ -50,8 +52,8 @@ private:
         std::size_t tauEstimate,
         std::size_t maxLag) const noexcept;
 
-    float sampleRateHz_;
-    float threshold_;
+    std::atomic<float> sampleRateHz_;
+    std::atomic<float> threshold_;
     std::array<double, kMaxHalfWindowSize + 1> difference_;
     std::array<float, kMaxHalfWindowSize + 1> cmndf_;
 };

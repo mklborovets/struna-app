@@ -12,20 +12,20 @@ YinDetector::YinDetector(float sampleRateHz, float threshold) noexcept
 
 void YinDetector::setSampleRate(float sampleRateHz) noexcept {
     if (sampleRateHz > 0.0f) {
-        sampleRateHz_ = sampleRateHz;
+        sampleRateHz_.store(sampleRateHz, std::memory_order_relaxed);
     }
 }
 
 float YinDetector::getSampleRate() const noexcept {
-    return sampleRateHz_;
+    return sampleRateHz_.load(std::memory_order_relaxed);
 }
 
 void YinDetector::setThreshold(float threshold) noexcept {
-    threshold_ = std::clamp(threshold, 0.01f, 0.50f);
+    threshold_.store(std::clamp(threshold, 0.01f, 0.50f), std::memory_order_relaxed);
 }
 
 float YinDetector::getThreshold() const noexcept {
-    return threshold_;
+    return threshold_.load(std::memory_order_relaxed);
 }
 
 YinDetectionResult YinDetector::detect(const float* samples, std::size_t sampleCount) noexcept {
@@ -33,13 +33,16 @@ YinDetectionResult YinDetector::detect(const float* samples, std::size_t sampleC
         return {0.0f, 0.0f};
     }
 
+    const float currentSampleRateHz = sampleRateHz_.load(std::memory_order_relaxed);
+    const float currentThreshold = threshold_.load(std::memory_order_relaxed);
+
     const std::size_t clampedCount = std::min(sampleCount, kMaxWindowSize);
     const std::size_t integrationWindow = clampedCount / 2;
     const std::size_t minLag = std::max<std::size_t>(
-        2, static_cast<std::size_t>(sampleRateHz_ / kMaxDetectableFrequencyHz));
+        2, static_cast<std::size_t>(currentSampleRateHz / kMaxDetectableFrequencyHz));
     const std::size_t maxLag = std::min<std::size_t>(
         integrationWindow,
-        static_cast<std::size_t>(sampleRateHz_ / kMinDetectableFrequencyHz));
+        static_cast<std::size_t>(currentSampleRateHz / kMinDetectableFrequencyHz));
 
     if (minLag >= maxLag) {
         return {0.0f, 0.0f};
@@ -48,7 +51,7 @@ YinDetectionResult YinDetector::detect(const float* samples, std::size_t sampleC
     computeDifferenceFunction(samples, integrationWindow, maxLag);
     computeCumulativeMeanNormalizedDifference(maxLag);
 
-    std::size_t tauEstimate = findAbsoluteThresholdLag(minLag, maxLag);
+    std::size_t tauEstimate = findAbsoluteThresholdLag(minLag, maxLag, currentThreshold);
     if (tauEstimate == 0) {
         return {0.0f, 0.0f};
     }
@@ -63,7 +66,7 @@ YinDetectionResult YinDetector::detect(const float* samples, std::size_t sampleC
         return {0.0f, 0.0f};
     }
 
-    const float frequencyHz = sampleRateHz_ / interpolatedLag;
+    const float frequencyHz = currentSampleRateHz / interpolatedLag;
     return {frequencyHz, confidence};
 }
 
@@ -100,9 +103,10 @@ void YinDetector::computeCumulativeMeanNormalizedDifference(std::size_t maxLag) 
 
 std::size_t YinDetector::findAbsoluteThresholdLag(
     std::size_t minLag,
-    std::size_t maxLag) const noexcept {
+    std::size_t maxLag,
+    float threshold) const noexcept {
     for (std::size_t tau = minLag; tau <= maxLag; ++tau) {
-        if (cmndf_[tau] < threshold_) {
+        if (cmndf_[tau] < threshold) {
             while (tau + 1 <= maxLag && cmndf_[tau + 1] < cmndf_[tau]) {
                 ++tau;
             }

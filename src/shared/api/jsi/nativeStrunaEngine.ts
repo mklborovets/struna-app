@@ -24,7 +24,10 @@ let fallbackMetronomeBpm = DEFAULT_METRONOME_BPM;
 let fallbackMetronomeActive = false;
 
 const getNativeAudioModule = (): NativeStrunaAudioModuleSpec | undefined => {
-  const modules = NativeModules as Record<string, NativeStrunaAudioModuleSpec | undefined>;
+  const modules = NativeModules as Record<
+    string,
+    NativeStrunaAudioModuleSpec | undefined
+  >;
   return modules.StrunaAudioModule;
 };
 
@@ -83,6 +86,15 @@ export const nativeStrunaEngine: StrunaJsiEngine = {
       return;
     }
     engine.getWaveformSnapshot(targetArray);
+  },
+
+  getSpectrumSnapshot(targetArray: Float32Array): void {
+    const engine = resolveJsiEngine();
+    if (!engine || typeof engine.getSpectrumSnapshot !== 'function') {
+      targetArray.fill(0);
+      return;
+    }
+    engine.getSpectrumSnapshot(targetArray);
   },
 
   setNoiseGateThresholdDb(decibels: number): void {

@@ -45,6 +45,16 @@ void testRingBufferAndRmsGate() {
     requireTrue(written == 4096, "RingBuffer must write all 4096 floats");
     requireTrue(ringBuffer.availableToRead() == 4096, "RingBuffer must report 4096 available floats");
 
+    std::vector<float> latestWindow(2048, 0.0f);
+    requireTrue(
+        ringBuffer.copyLatestWindow(latestWindow.data(), latestWindow.size()),
+        "RingBuffer copyLatestWindow must succeed when 4096 samples are written");
+    requireNear(
+        latestWindow[2047],
+        inputSamples[4095],
+        1.0e-7f,
+        "RingBuffer copyLatestWindow must match tail of written buffer");
+
     std::vector<float> outputSamples(4096, 0.0f);
     const std::size_t readCount = ringBuffer.read(outputSamples.data(), outputSamples.size());
     requireTrue(readCount == 4096, "RingBuffer must read all 4096 floats");
@@ -52,6 +62,11 @@ void testRingBufferAndRmsGate() {
     for (std::size_t i = 0; i < 4096; ++i) {
         requireNear(outputSamples[i], inputSamples[i], 1.0e-7f, "RingBuffer sample integrity");
     }
+
+    ringBuffer.clear();
+    requireTrue(
+        !ringBuffer.copyLatestWindow(latestWindow.data(), latestWindow.size()),
+        "RingBuffer copyLatestWindow must return false immediately after clear()");
 
     std::vector<float> silenceBuffer(1024, 0.0f);
     const float silenceRmsDb =

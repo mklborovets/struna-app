@@ -27,7 +27,7 @@ public:
 
     void setSampleRate(float sampleRateHz) noexcept {
         if (sampleRateHz > 0.0f) {
-            sampleRateHz_ = sampleRateHz;
+            sampleRateHz_.store(sampleRateHz, std::memory_order_relaxed);
         }
     }
 
@@ -43,8 +43,8 @@ public:
     void setActive(bool active) noexcept {
         const bool previouslyActive = isActive_.exchange(active, std::memory_order_acq_rel);
         if (active && !previouslyActive) {
-            sampleCursorInBeat_ = 0;
-            currentBeatIndex_ = 0;
+            sampleCursorInBeat_.store(0, std::memory_order_release);
+            currentBeatIndex_.store(0, std::memory_order_release);
         }
     }
 
@@ -53,12 +53,13 @@ public:
     }
 
     std::uint32_t getCurrentBeatIndex() const noexcept {
-        return currentBeatIndex_;
+        return currentBeatIndex_.load(std::memory_order_relaxed);
     }
 
     std::size_t getSamplesPerBeat() const noexcept {
         const float currentBpm = bpm_.load(std::memory_order_relaxed);
-        return static_cast<std::size_t>((sampleRateHz_ * 60.0f) / currentBpm);
+        const float currentSampleRateHz = sampleRateHz_.load(std::memory_order_relaxed);
+        return static_cast<std::size_t>((currentSampleRateHz * 60.0f) / currentBpm);
     }
 
     void renderBlock(float* outputSamples, std::size_t frameCount) noexcept {
@@ -71,22 +72,26 @@ public:
             return;
         }
 
+        const float currentSampleRateHz = sampleRateHz_.load(std::memory_order_relaxed);
         const std::size_t samplesPerBeat = std::max<std::size_t>(1, getSamplesPerBeat());
         const std::size_t clickLengthSamples =
-            static_cast<std::size_t>(sampleRateHz_ * kClickDurationSeconds);
+            static_cast<std::size_t>(currentSampleRateHz * kClickDurationSeconds);
+
+        std::size_t cursor = sampleCursorInBeat_.load(std::memory_order_acquire);
+        std::uint32_t beatIndex = currentBeatIndex_.load(std::memory_order_acquire);
 
         for (std::size_t i = 0; i < frameCount; ++i) {
-            if (sampleCursorInBeat_ >= samplesPerBeat) {
-                sampleCursorInBeat_ = 0;
-                currentBeatIndex_ = (currentBeatIndex_ + 1) % kBeatsPerBar;
+            if (cursor >= samplesPerBeat) {
+                cursor = 0;
+                beatIndex = (beatIndex + 1) % kBeatsPerBar;
             }
 
-            if (sampleCursorInBeat_ < clickLengthSamples) {
-                const float toneHz = (currentBeatIndex_ == 0)
+            if (cursor < clickLengthSamples) {
+                const float toneHz = (beatIndex == 0)
                     ? kDownbeatFrequencyHz
                     : kSubbeatFrequencyHz;
                 const float timeSec =
-                    static_cast<float>(sampleCursorInBeat_) / sampleRateHz_;
+                    static_cast<float>(cursor) / currentSampleRateHz;
                 const float envelope =
                     std::exp(-timeSec * 140.0f);
                 outputSamples[i] = 0.8f * envelope * std::sin(kTwoPi * toneHz * timeSec);
@@ -94,16 +99,19 @@ public:
                 outputSamples[i] = 0.0f;
             }
 
-            ++sampleCursorInBeat_;
+            ++cursor;
         }
+
+        sampleCursorInBeat_.store(cursor, std::memory_order_release);
+        currentBeatIndex_.store(beatIndex, std::memory_order_release);
     }
 
 private:
-    float sampleRateHz_;
+    std::atomic<float> sampleRateHz_;
     std::atomic<float> bpm_;
     std::atomic<bool> isActive_;
-    std::size_t sampleCursorInBeat_;
-    std::uint32_t currentBeatIndex_;
+    std::atomic<std::size_t> sampleCursorInBeat_;
+    std::atomic<std::uint32_t> currentBeatIndex_;
 };
 
 }

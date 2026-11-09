@@ -10,6 +10,7 @@ export interface StrunaJsiEngine {
   stopAudioCapture(): void;
   pollPitchFrame(): NativePitchFrame;
   getWaveformSnapshot(targetArray: Float32Array): void;
+  getSpectrumSnapshot(targetArray: Float32Array): void;
   setNoiseGateThresholdDb(decibels: number): void;
   setMetronomeBpm(bpm: number): void;
   setMetronomeActive(active: boolean): void;
