@@ -24,7 +24,7 @@ jobs:
         run: ctest --test-dir build/tests --output-on-failure --verbose
 
   typescript-and-lint:
-    name: TypeScript Strict & FSD Architecture Lint
+    name: TypeScript Strict, Domain Math Tests & FSD Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -43,6 +43,9 @@ jobs:
 
       - name: Run ESLint (Zero Comments & FSD Boundaries)
         run: npm run lint
+
+      - name: Run TypeScript Domain Math & Preset Tests
+        run: npm run test:ts
 
   android-debug-apk:
     name: Build Android Debug Native Lib & APK
@@ -66,12 +69,14 @@ jobs:
       - name: Install JS Dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
 
-      - name: Bundle React Native JS Assets
+      - name: Build Debug APK with NDK CMake (libstruna.so)
+        working-directory: android
         run: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload app-debug.apk Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: struna-app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

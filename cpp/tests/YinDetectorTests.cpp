@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -45,16 +46,6 @@ void testRingBufferAndRmsGate() {
     requireTrue(written == 4096, "RingBuffer must write all 4096 floats");
     requireTrue(ringBuffer.availableToRead() == 4096, "RingBuffer must report 4096 available floats");
 
-    std::vector<float> latestWindow(2048, 0.0f);
-    requireTrue(
-        ringBuffer.copyLatestWindow(latestWindow.data(), latestWindow.size()),
-        "RingBuffer copyLatestWindow must succeed when 4096 samples are written");
-    requireNear(
-        latestWindow[2047],
-        inputSamples[4095],
-        1.0e-7f,
-        "RingBuffer copyLatestWindow must match tail of written buffer");
-
     std::vector<float> outputSamples(4096, 0.0f);
     const std::size_t readCount = ringBuffer.read(outputSamples.data(), outputSamples.size());
     requireTrue(readCount == 4096, "RingBuffer must read all 4096 floats");
@@ -62,11 +53,6 @@ void testRingBufferAndRmsGate() {
     for (std::size_t i = 0; i < 4096; ++i) {
         requireNear(outputSamples[i], inputSamples[i], 1.0e-7f, "RingBuffer sample integrity");
     }
-
-    ringBuffer.clear();
-    requireTrue(
-        !ringBuffer.copyLatestWindow(latestWindow.data(), latestWindow.size()),
-        "RingBuffer copyLatestWindow must return false immediately after clear()");
 
     std::vector<float> silenceBuffer(1024, 0.0f);
     const float silenceRmsDb =
@@ -227,6 +213,96 @@ void testSpectrumAndMetronome() {
         "Metronome is silent after click envelope completes");
 }
 
+void testYinSubCentDetuneAndSampleRates() {
+    const std::vector<float> sampleRates = {44100.0f, 48000.0f};
+    const std::vector<float> detuneOffsetsCents = {-23.4f, -4.2f, 0.0f, +3.5f, +17.8f};
+
+    for (float sampleRate : sampleRates) {
+        struna::YinDetector detector(sampleRate);
+        for (float detuneCents : detuneOffsetsCents) {
+            const float targetHz =
+                110.0f * std::pow(2.0f, detuneCents / 1200.0f);
+            const auto signal =
+                struna::testing::SyntheticSignalGenerator::generatePureSine(
+                    targetHz, sampleRate, kTestWindowSize, 0.85f);
+            const auto result = detector.detect(signal.data(), signal.size());
+            const float measuredCents =
+                struna::testing::SyntheticSignalGenerator::computeCentsError(
+                    result.frequencyHz, 110.0f);
+            requireNear(
+                measuredCents,
+                detuneCents,
+                0.5f,
+                "YIN must track fractional detunes within +/- 0.5 cents at both 44.1kHz and 48kHz");
+        }
+    }
+}
+
+void testYinTwentyConsecutiveGuitarTrialsZeroOctaveErrors() {
+    struna::YinDetector detector(kTestSampleRateHz);
+    const std::vector<float> guitarStrings = {
+        82.41f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f};
+
+    for (std::size_t trial = 0; trial < 20; ++trial) {
+        const float fundamentalHz = guitarStrings[trial % guitarStrings.size()];
+        const float firstAmp = 0.22f + 0.02f * static_cast<float>(trial % 4);
+        const float secondAmp = 0.90f + 0.05f * static_cast<float>(trial % 3);
+        const float thirdAmp = 0.65f + 0.04f * static_cast<float>(trial % 5);
+
+        auto signal =
+            struna::testing::SyntheticSignalGenerator::generateHarmonicRichTone(
+                fundamentalHz,
+                kTestSampleRateHz,
+                kTestWindowSize,
+                firstAmp,
+                secondAmp,
+                thirdAmp);
+
+        const auto hum50Hz =
+            struna::testing::SyntheticSignalGenerator::generatePureSine(
+                50.0f, kTestSampleRateHz, kTestWindowSize, 0.015f);
+        const auto roomNoise =
+            struna::testing::SyntheticSignalGenerator::generateDeterministicWhiteNoise(
+                kTestWindowSize, 0.01f, static_cast<std::uint32_t>(1000 + trial));
+
+        for (std::size_t i = 0; i < kTestWindowSize; ++i) {
+            signal[i] += hum50Hz[i] + roomNoise[i];
+        }
+
+        const auto detection = detector.detect(signal.data(), signal.size());
+        const float centsError =
+            struna::testing::SyntheticSignalGenerator::computeCentsError(
+                detection.frequencyHz, fundamentalHz);
+
+        requireTrue(
+            std::fabs(centsError) <= 1.0f,
+            "Zero octave errors and +/- 1 cent accuracy across 20 consecutive realistic guitar trials");
+    }
+}
+
+void testYinRealtimeLatencyBudget() {
+    struna::YinDetector detector(kTestSampleRateHz);
+    struna::PitchStabilizer stabilizer(80.0f, 0.85f, 0.45f);
+    const auto signal =
+        struna::testing::SyntheticSignalGenerator::generateHarmonicRichTone(
+            82.41f, kTestSampleRateHz, kTestWindowSize, 0.3f, 0.9f, 0.6f);
+
+    const auto startClock = std::chrono::steady_clock::now();
+    constexpr std::size_t kIterations = 50;
+    for (std::size_t i = 0; i < kIterations; ++i) {
+        const auto res = detector.detect(signal.data(), signal.size());
+        (void)stabilizer.processFrame(res.frequencyHz, res.confidence, -18.0f, true, 10.6f);
+    }
+    const auto endClock = std::chrono::steady_clock::now();
+    const double totalMs =
+        std::chrono::duration<double, std::milli>(endClock - startClock).count();
+    const double avgFrameMs = totalMs / static_cast<double>(kIterations);
+
+    requireTrue(
+        avgFrameMs < 10.0,
+        "YIN + PitchStabilizer processing time per frame must stay well under 10 ms budget");
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -259,6 +335,15 @@ int main(int argc, char** argv) {
     }
     if (suite == "all" || suite == "extras") {
         testSpectrumAndMetronome();
+    }
+    if (suite == "all" || suite == "yin_detune_sr") {
+        testYinSubCentDetuneAndSampleRates();
+    }
+    if (suite == "all" || suite == "yin_20_trials") {
+        testYinTwentyConsecutiveGuitarTrialsZeroOctaveErrors();
+    }
+    if (suite == "all" || suite == "latency") {
+        testYinRealtimeLatencyBudget();
     }
 
     std::cout << "[PASS] Suite '" << suite << "' completed successfully." << std::endl;

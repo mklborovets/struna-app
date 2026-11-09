@@ -34,3 +34,6 @@ add_test(NAME YinDetectorGuitarStringsPrecision COMMAND struna_dsp_tests --suite
 add_test(NAME YinDetectorHarmonicImmunity COMMAND struna_dsp_tests --suite=yin_harmonics)
 add_test(NAME PitchStabilizerAttackAndMedian COMMAND struna_dsp_tests --suite=stabilizer)
 add_test(NAME SpectrumAndMetronomeTests COMMAND struna_dsp_tests --suite=extras)
+add_test(NAME YinSubCentDetuneAndSampleRateTests COMMAND struna_dsp_tests --suite=yin_detune_sr)
+add_test(NAME YinTwentyConsecutiveGuitarTrialsZeroOctaveErrors COMMAND struna_dsp_tests --suite=yin_20_trials)
+add_test(NAME YinRealtimeLatencyBudgetBenchmark COMMAND struna_dsp_tests --suite=latency)

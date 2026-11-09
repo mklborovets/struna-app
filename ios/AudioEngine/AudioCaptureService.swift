@@ -5,7 +5,7 @@ import Foundation
 func StrunaIosPushAudioSamples(_ samples: UnsafePointer<Float>, _ count: Int32)
 
 @_silgen_name("StrunaIosRenderMetronomeBlock")
-func StrunaIosRenderMetronomeBlock(_ outputSamples: UnsafeMutablePointer<Float>, _ frameCount: Int32)
+func StrunaIosRenderMetronomeBlock(_ output: UnsafeMutablePointer<Float>, _ count: Int32) -> Bool
 
 @_silgen_name("StrunaIosSetSampleRate")
 func StrunaIosSetSampleRate(_ sampleRateHz: Float)
@@ -97,7 +97,7 @@ public final class AudioCaptureService: NSObject {
         }
         isTapInstalled = true
 
-        attachMetronomeSourceNodeIfNeeded(sampleRate: hardwareFormat.sampleRate)
+        attachMetronomeNodeIfNeeded(sampleRate: hardwareFormat.sampleRate)
 
         do {
             audioEngine.prepare()
@@ -113,7 +113,7 @@ public final class AudioCaptureService: NSObject {
         }
     }
 
-    private func attachMetronomeSourceNodeIfNeeded(sampleRate: Double) {
+    private func attachMetronomeNodeIfNeeded(sampleRate: Double) {
         if metronomeSourceNode != nil {
             return
         }
@@ -123,15 +123,23 @@ public final class AudioCaptureService: NSObject {
         ) else {
             return
         }
+
         let sourceNode = AVAudioSourceNode(format: renderFormat) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let firstBuffer = ablPointer.first,
                   let dataPtr = firstBuffer.mData?.assumingMemoryBound(to: Float.self) else {
                 return noErr
             }
-            StrunaIosRenderMetronomeBlock(dataPtr, Int32(frameCount))
+            let count = Int32(frameCount)
+            let rendered = StrunaIosRenderMetronomeBlock(dataPtr, count)
+            if !rendered {
+                for i in 0..<Int(frameCount) {
+                    dataPtr[i] = 0.0
+                }
+            }
             return noErr
         }
+
         audioEngine.attach(sourceNode)
         audioEngine.connect(sourceNode, to: audioEngine.mainMixerNode, format: renderFormat)
         metronomeSourceNode = sourceNode
@@ -141,10 +149,6 @@ public final class AudioCaptureService: NSObject {
         if isTapInstalled {
             audioEngine.inputNode.removeTap(onBus: 0)
             isTapInstalled = false
-        }
-        if let sourceNode = metronomeSourceNode {
-            audioEngine.detach(sourceNode)
-            metronomeSourceNode = nil
         }
         if audioEngine.isRunning {
             audioEngine.stop()

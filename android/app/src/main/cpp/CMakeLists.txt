@@ -7,6 +7,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(STRUNA_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../)
 
+find_package(ReactAndroid REQUIRED CONFIG)
+
 add_library(
     struna
     SHARED
@@ -34,4 +36,8 @@ target_compile_options(
 )
 
 find_library(LOG_LIB log)
-target_link_libraries(struna ${LOG_LIB})
+target_link_libraries(
+    struna
+    ${LOG_LIB}
+    ReactAndroid::jsi
+)

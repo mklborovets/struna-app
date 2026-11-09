@@ -6,7 +6,7 @@
 
 #include "StrunaHostObject.hpp"
 
-@interface StrunaAudioCaptureService : NSObject
+@interface NSObject (StrunaAudioCaptureDynamic)
 + (instancetype)shared;
 - (BOOL)startCapture;
 - (void)stopCapture;
@@ -14,30 +14,38 @@
 
 namespace {
 
+Class resolveCaptureServiceClass() noexcept {
+    return NSClassFromString(@"StrunaAudioCaptureService");
+}
+
+bool startIosAudioCapture() noexcept {
+    Class cls = resolveCaptureServiceClass();
+    if (cls == Nil) {
+        return false;
+    }
+    id service = [cls shared];
+    if (service == nil) {
+        return false;
+    }
+    return [service startCapture] == YES;
+}
+
+void stopIosAudioCapture() noexcept {
+    Class cls = resolveCaptureServiceClass();
+    if (cls == Nil) {
+        return;
+    }
+    id service = [cls shared];
+    if (service != nil) {
+        [service stopCapture];
+    }
+}
+
 std::shared_ptr<struna::StrunaHostObject>& getIosSharedHostObject() noexcept {
     static std::shared_ptr<struna::StrunaHostObject> instance =
         std::make_shared<struna::StrunaHostObject>(
-            []() -> bool {
-                Class serviceClass = NSClassFromString(@"StrunaAudioCaptureService");
-                if (serviceClass == nil) {
-                    return false;
-                }
-                id sharedInstance = [serviceClass performSelector:@selector(shared)];
-                if (sharedInstance == nil) {
-                    return false;
-                }
-                return [sharedInstance startCapture] == YES;
-            },
-            []() {
-                Class serviceClass = NSClassFromString(@"StrunaAudioCaptureService");
-                if (serviceClass == nil) {
-                    return;
-                }
-                id sharedInstance = [serviceClass performSelector:@selector(shared)];
-                if (sharedInstance != nil) {
-                    [sharedInstance stopCapture];
-                }
-            });
+            []() { return startIosAudioCapture(); },
+            []() { stopIosAudioCapture(); });
     return instance;
 }
 
@@ -60,13 +68,17 @@ extern "C" void StrunaIosPushAudioSamples(const float* samples, int32_t count) {
         static_cast<std::size_t>(count));
 }
 
-extern "C" void StrunaIosRenderMetronomeBlock(float* outputSamples, int32_t frameCount) {
-    if (outputSamples == nullptr || frameCount <= 0) {
-        return;
+extern "C" bool StrunaIosRenderMetronomeBlock(float* outputBuffer, int32_t frameCount) {
+    if (outputBuffer == nullptr || frameCount <= 0) {
+        return false;
+    }
+    if (!getIosSharedHostObject()->isMetronomeActive()) {
+        return false;
     }
     getIosSharedHostObject()->renderMetronomeAudioBlock(
-        outputSamples,
+        outputBuffer,
         static_cast<std::size_t>(frameCount));
+    return true;
 }
 
 extern "C" void StrunaIosSetSampleRate(float sampleRateHz) {
@@ -76,3 +88,41 @@ extern "C" void StrunaIosSetSampleRate(float sampleRateHz) {
 extern "C" void StrunaIosResetEngine(void) {
     getIosSharedHostObject()->resetEngine();
 }
+
+#if __has_include(<React/RCTBridgeModule.h>)
+#import <React/RCTBridge+Private.h>
+#import <React/RCTBridgeModule.h>
+
+@interface StrunaAudioModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation StrunaAudioModule
+
+@synthesize bridge = _bridge;
+
+RCT_EXPORT_MODULE(StrunaAudioModule)
+
++ (BOOL)requiresMainQueueSetup {
+    return NO;
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(installJsiBindings) {
+    RCTCxxBridge* cxxBridge = (RCTCxxBridge*)self.bridge;
+    if (cxxBridge == nil || cxxBridge.runtime == nullptr) {
+        return @(NO);
+    }
+    StrunaIosInstallJsi(cxxBridge.runtime);
+    return @(YES);
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(startNativeCapture) {
+    return @(startIosAudioCapture());
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(stopNativeCapture) {
+    stopIosAudioCapture();
+    return nil;
+}
+
+@end
+#endif

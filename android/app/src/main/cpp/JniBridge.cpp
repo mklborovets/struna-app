@@ -49,7 +49,7 @@ Java_com_struna_audio_StrunaAudioModule_nativePushAudioSamples(
     }
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_struna_audio_StrunaAudioModule_nativeRenderMetronomeBlock(
     JNIEnv* env,
     jobject thiz,
@@ -57,7 +57,10 @@ Java_com_struna_audio_StrunaAudioModule_nativeRenderMetronomeBlock(
     jint frameCount) {
     (void)thiz;
     if (outputBuffer == nullptr || frameCount <= 0) {
-        return;
+        return JNI_FALSE;
+    }
+    if (!getSharedHostObject()->isMetronomeActive()) {
+        return JNI_FALSE;
     }
     jfloat* rawElements = static_cast<jfloat*>(
         env->GetPrimitiveArrayCritical(outputBuffer, nullptr));
@@ -67,15 +70,7 @@ Java_com_struna_audio_StrunaAudioModule_nativeRenderMetronomeBlock(
             static_cast<std::size_t>(frameCount));
         env->ReleasePrimitiveArrayCritical(outputBuffer, rawElements, 0);
     }
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_struna_audio_StrunaAudioModule_nativeIsMetronomeActive(
-    JNIEnv* env,
-    jobject thiz) {
-    (void)env;
-    (void)thiz;
-    return getSharedHostObject()->isMetronomeActive() ? JNI_TRUE : JNI_FALSE;
+    return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL

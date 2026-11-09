@@ -12,94 +12,14 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.uimanager.ViewManager
 import java.util.concurrent.atomic.AtomicBoolean
 
-class MetronomePlaybackThread(
-    private val sampleRateHz: Int = 48000,
-    private val blockFrames: Int = 512,
-    private val onRenderBlock: (FloatArray, Int) -> Unit
-) {
-    private val isRunning = AtomicBoolean(false)
-    private var playbackThread: Thread? = null
-
-    fun start() {
-        if (!isRunning.compareAndSet(false, true)) {
-            return
-        }
-
-        playbackThread = Thread({
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
-            val minBufferBytes = AudioTrack.getMinBufferSize(
-                sampleRateHz,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_FLOAT
-            )
-            val bufferBytes = maxOf(minBufferBytes, blockFrames * 4 * 2)
-            val audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setSampleRate(sampleRateHz)
-                        .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(bufferBytes)
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-
-            val renderBuffer = FloatArray(blockFrames)
-            try {
-                audioTrack.play()
-                while (isRunning.get() && !Thread.currentThread().isInterrupted) {
-                    onRenderBlock(renderBuffer, blockFrames)
-                    audioTrack.write(
-                        renderBuffer,
-                        0,
-                        blockFrames,
-                        AudioTrack.WRITE_BLOCKING
-                    )
-                }
-            } catch (_: IllegalStateException) {
-                isRunning.set(false)
-            } finally {
-                try {
-                    if (audioTrack.playState == AudioTrack.PLAYSTATE_PLAYING) {
-                        audioTrack.stop()
-                    }
-                } catch (_: IllegalStateException) {
-                }
-                audioTrack.release()
-            }
-        }, "StrunaMetronomePlaybackThread").apply {
-            isDaemon = true
-            start()
-        }
-    }
-
-    fun stop() {
-        if (!isRunning.compareAndSet(true, false)) {
-            return
-        }
-        playbackThread?.interrupt()
-        try {
-            playbackThread?.join(300)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-        }
-        playbackThread = null
-    }
-}
-
 class StrunaAudioModule(
     private val reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {
 
     private var captureThread: AudioCaptureThread? = null
-    private var metronomeThread: MetronomePlaybackThread? = null
+    private var metronomeThread: Thread? = null
+    private val isMetronomePumpRunning = AtomicBoolean(false)
+
     private val focusManager = AudioFocusManager(
         context = reactContext,
         onFocusLost = { stopCaptureInternal(abandonAudioFocus = false) },
@@ -115,6 +35,7 @@ class StrunaAudioModule(
             return false
         }
         nativeInstallJsi(jsContext)
+        startMetronomeAudioPump()
         return true
     }
 
@@ -123,6 +44,7 @@ class StrunaAudioModule(
         if (!focusManager.requestFocus()) {
             return false
         }
+        startMetronomeAudioPump()
         return startCaptureInternal()
     }
 
@@ -132,15 +54,6 @@ class StrunaAudioModule(
     }
 
     private fun startCaptureInternal(): Boolean {
-        if (metronomeThread == null) {
-            metronomeThread = MetronomePlaybackThread(
-                sampleRateHz = 48000,
-                blockFrames = 512,
-                onRenderBlock = { buffer, frameCount ->
-                    nativeRenderMetronomeBlock(buffer, frameCount)
-                }
-            ).also { it.start() }
-        }
         if (captureThread?.isCapturing() == true) {
             return true
         }
@@ -161,23 +74,87 @@ class StrunaAudioModule(
     private fun stopCaptureInternal(abandonAudioFocus: Boolean) {
         captureThread?.stop()
         captureThread = null
-        metronomeThread?.stop()
-        metronomeThread = null
         nativeResetEngine()
         if (abandonAudioFocus) {
             focusManager.abandonFocus()
         }
     }
 
+    private fun startMetronomeAudioPump() {
+        if (!isMetronomePumpRunning.compareAndSet(false, true)) {
+            return
+        }
+        metronomeThread = Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+            val sampleRate = 48000
+            val blockFrames = 512
+            val minBufferBytes = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_FLOAT
+            )
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(maxOf(minBufferBytes, blockFrames * 4 * 2))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+
+            val blockBuffer = FloatArray(blockFrames)
+            try {
+                track.play()
+                while (isMetronomePumpRunning.get() && !Thread.currentThread().isInterrupted) {
+                    val rendered = nativeRenderMetronomeBlock(blockBuffer, blockFrames)
+                    if (rendered) {
+                        track.write(blockBuffer, 0, blockFrames, AudioTrack.WRITE_BLOCKING)
+                    } else {
+                        Thread.sleep(15)
+                    }
+                }
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            } catch (_: IllegalStateException) {
+            } finally {
+                try {
+                    track.stop()
+                } catch (_: IllegalStateException) {
+                }
+                track.release()
+            }
+        }, "StrunaMetronomeAudioThread").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun stopMetronomeAudioPump() {
+        if (!isMetronomePumpRunning.compareAndSet(true, false)) {
+            return
+        }
+        metronomeThread?.interrupt()
+        metronomeThread = null
+    }
+
     override fun invalidate() {
+        stopMetronomeAudioPump()
         stopCaptureInternal(abandonAudioFocus = true)
         super.invalidate()
     }
 
     private external fun nativeInstallJsi(jsiRuntimePtr: Long)
     private external fun nativePushAudioSamples(samples: FloatArray, count: Int)
-    private external fun nativeRenderMetronomeBlock(outputBuffer: FloatArray, frameCount: Int)
-    private external fun nativeIsMetronomeActive(): Boolean
+    private external fun nativeRenderMetronomeBlock(outputBuffer: FloatArray, frameCount: Int): Boolean
     private external fun nativeSetSampleRate(sampleRateHz: Float)
     private external fun nativeResetEngine()
 
