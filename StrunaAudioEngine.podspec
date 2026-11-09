@@ -18,6 +18,9 @@ Pod::Spec.new do |s|
     "ios/AudioEngine/**/*.{swift,h,m,mm}"
   ]
 
+  s.public_header_files = []
+  s.private_header_files = "cpp/**/*.{hpp,h}"
+
   s.swift_version = "5.0"
   s.libraries = "c++"
   s.pod_target_xcconfig = {
@@ -29,4 +32,3 @@ Pod::Spec.new do |s|
   s.dependency "React-Core"
   s.dependency "React-jsi"
 end
-
