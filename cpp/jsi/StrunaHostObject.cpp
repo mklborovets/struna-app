@@ -14,11 +14,10 @@ StrunaHostObject::StrunaHostObject(
       onStopCapture_(std::move(onStopCapture)),
       isCapturing_(false),
       sampleRateHz_(48000.0f),
-      metronomeBpm_(120.0f),
-      metronomeActive_(false),
       rmsGate_(-52.0f),
       yinDetector_(48000.0f),
-      stabilizer_(80.0f, 0.85f, 0.45f) {}
+      stabilizer_(80.0f, 0.85f, 0.45f),
+      metronomeScheduler_(48000.0f) {}
 
 void StrunaHostObject::pushAudioSamples(const float* samples, std::size_t count) noexcept {
     ringBuffer_.pushOverwrite(samples, count);
@@ -28,6 +27,7 @@ void StrunaHostObject::setSampleRate(float sampleRateHz) noexcept {
     if (sampleRateHz > 0.0f) {
         sampleRateHz_.store(sampleRateHz, std::memory_order_relaxed);
         yinDetector_.setSampleRate(sampleRateHz);
+        metronomeScheduler_.setSampleRate(sampleRateHz);
     }
 }
 
@@ -76,24 +76,30 @@ void StrunaHostObject::copyWaveformSnapshotNative(
     }
 }
 
+void StrunaHostObject::renderMetronomeAudioBlock(
+    float* outputBuffer,
+    std::size_t frameCount) noexcept {
+    metronomeScheduler_.renderBlock(outputBuffer, frameCount);
+}
+
 void StrunaHostObject::setNoiseGateThresholdDb(float decibels) noexcept {
     rmsGate_.setThresholdDb(decibels);
 }
 
 void StrunaHostObject::setMetronomeBpm(float bpm) noexcept {
-    metronomeBpm_.store(std::clamp(bpm, 30.0f, 280.0f), std::memory_order_relaxed);
+    metronomeScheduler_.setBpm(bpm);
 }
 
 void StrunaHostObject::setMetronomeActive(bool active) noexcept {
-    metronomeActive_.store(active, std::memory_order_release);
+    metronomeScheduler_.setActive(active);
 }
 
 float StrunaHostObject::getMetronomeBpm() const noexcept {
-    return metronomeBpm_.load(std::memory_order_relaxed);
+    return metronomeScheduler_.getBpm();
 }
 
 bool StrunaHostObject::isMetronomeActive() const noexcept {
-    return metronomeActive_.load(std::memory_order_acquire);
+    return metronomeScheduler_.isActive();
 }
 
 std::vector<facebook::jsi::PropNameID> StrunaHostObject::getPropertyNames(

@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
 import { HistoryPage } from '@/pages/history';
+import { MetronomePage } from '@/pages/metronome';
 import { TunerPage } from '@/pages/tuner';
 import { THEME_COLORS } from '@/shared/config/theme';
 import { IconButton } from '@/shared/ui/IconButton';
 import { Typography } from '@/shared/ui/Typography';
 import { HistoryIcon } from '@/shared/ui/icons/HistoryIcon';
+import { MetronomeIcon } from '@/shared/ui/icons/MetronomeIcon';
 import { TuningForkIcon } from '@/shared/ui/icons/TuningForkIcon';
 
-export type AppRouteTab = 'tuner' | 'history';
+export type AppRouteTab = 'tuner' | 'metronome' | 'history';
 
 export const RootNavigator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppRouteTab>('tuner');
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.backgroundPrimary} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={THEME_COLORS.backgroundPrimary}
+      />
       <View style={styles.header}>
         <Typography variant="title">STRUNA</Typography>
         <View style={styles.navTabs}>
@@ -36,6 +41,21 @@ export const RootNavigator: React.FC = () => {
           />
           <IconButton
             icon={
+              <MetronomeIcon
+                size={16}
+                color={
+                  activeTab === 'metronome'
+                    ? THEME_COLORS.accentInTune
+                    : THEME_COLORS.textSecondary
+                }
+              />
+            }
+            label="TEMPO"
+            active={activeTab === 'metronome'}
+            onPress={() => setActiveTab('metronome')}
+          />
+          <IconButton
+            icon={
               <HistoryIcon
                 size={16}
                 color={
@@ -45,7 +65,7 @@ export const RootNavigator: React.FC = () => {
                 }
               />
             }
-            label="HISTORY"
+            label="LOG"
             active={activeTab === 'history'}
             onPress={() => setActiveTab('history')}
           />
@@ -53,7 +73,13 @@ export const RootNavigator: React.FC = () => {
       </View>
 
       <View style={styles.pageViewport}>
-        {activeTab === 'tuner' ? <TunerPage /> : <HistoryPage />}
+        {activeTab === 'tuner' ? (
+          <TunerPage />
+        ) : activeTab === 'metronome' ? (
+          <MetronomePage />
+        ) : (
+          <HistoryPage />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -76,7 +102,7 @@ const styles = StyleSheet.create({
   navTabs: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   pageViewport: {
     flex: 1,

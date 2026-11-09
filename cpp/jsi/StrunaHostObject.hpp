@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "AudioTypes.hpp"
+#include "MetronomeScheduler.hpp"
 #include "PitchStabilizer.hpp"
 #include "RingBuffer.hpp"
 #include "RmsGate.hpp"
@@ -38,6 +39,7 @@ public:
 
     PitchFrame pollPitchFrameNative() noexcept;
     void copyWaveformSnapshotNative(float* targetBuffer, std::size_t length) const noexcept;
+    void renderMetronomeAudioBlock(float* outputBuffer, std::size_t frameCount) noexcept;
 
     void setNoiseGateThresholdDb(float decibels) noexcept;
     void setMetronomeBpm(float bpm) noexcept;
@@ -54,13 +56,12 @@ private:
     StopCaptureCallback onStopCapture_;
     std::atomic<bool> isCapturing_;
     std::atomic<float> sampleRateHz_;
-    std::atomic<float> metronomeBpm_;
-    std::atomic<bool> metronomeActive_;
 
     RingBuffer<kDefaultRingBufferCapacity> ringBuffer_;
     RmsGate rmsGate_;
     YinDetector yinDetector_;
     PitchStabilizer stabilizer_;
+    MetronomeScheduler metronomeScheduler_;
 };
 
 }

@@ -6,9 +6,11 @@
 
 #include "AudioTypes.hpp"
 #include "AutocorrelationDetector.hpp"
+#include "MetronomeScheduler.hpp"
 #include "PitchStabilizer.hpp"
 #include "RingBuffer.hpp"
 #include "RmsGate.hpp"
+#include "SpectrumAnalyzer.hpp"
 #include "SyntheticSignalGenerator.hpp"
 #include "YinDetector.hpp"
 
@@ -176,6 +178,40 @@ void testPitchStabilizerAttackAndMedian() {
         "Single frame octave jump (164.82 Hz among 82.41 Hz) must be rejected");
 }
 
+void testSpectrumAndMetronome() {
+    struna::SpectrumAnalyzer<> analyzer;
+    const auto sine440 = struna::testing::SyntheticSignalGenerator::generatePureSine(
+        440.0f, kTestSampleRateHz, 512, 0.8f);
+    struna::SpectrumFrame spectrumFrame{};
+    analyzer.computeFrame(sine440.data(), sine440.size(), spectrumFrame);
+
+    float maxMag = 0.0f;
+    for (float mag : spectrumFrame.magnitudes) {
+        if (mag > maxMag) {
+            maxMag = mag;
+        }
+    }
+    requireTrue(maxMag > 0.5f, "SpectrumAnalyzer produces non-zero magnitude peak for 440 Hz tone");
+
+    struna::MetronomeScheduler metronome(kTestSampleRateHz);
+    metronome.setBpm(120.0f);
+    metronome.setActive(true);
+    requireTrue(
+        metronome.getSamplesPerBeat() == 24000,
+        "At 48000 Hz and 120 BPM each beat is exactly 24000 samples");
+
+    std::vector<float> audioBlock(24000, 0.0f);
+    metronome.renderBlock(audioBlock.data(), audioBlock.size());
+    requireTrue(
+        std::fabs(audioBlock[10]) > 0.01f,
+        "Metronome generates click waveform at start of beat");
+    requireNear(
+        audioBlock[20000],
+        0.0f,
+        1.0e-6f,
+        "Metronome is silent after click envelope completes");
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -205,6 +241,9 @@ int main(int argc, char** argv) {
     }
     if (suite == "all" || suite == "stabilizer") {
         testPitchStabilizerAttackAndMedian();
+    }
+    if (suite == "all" || suite == "extras") {
+        testSpectrumAndMetronome();
     }
 
     std::cout << "[PASS] Suite '" << suite << "' completed successfully." << std::endl;
