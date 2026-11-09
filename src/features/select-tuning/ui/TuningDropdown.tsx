@@ -22,7 +22,9 @@ export const TuningDropdown: React.FC<TuningDropdownProps> = ({
     <View style={styles.wrapper}>
       <Pressable style={styles.triggerButton} onPress={onToggleMenu}>
         <Text style={styles.caption}>TUNING</Text>
-        <Text style={styles.selectedValue}>{activePreset.shortLabel}</Text>
+        <Text style={styles.selectedValue} numberOfLines={1}>
+          {activePreset.shortLabel}
+        </Text>
       </Pressable>
 
       {isMenuOpen ? (
@@ -57,41 +59,47 @@ export const TuningDropdown: React.FC<TuningDropdownProps> = ({
 
 const styles = StyleSheet.create({
   wrapper: {
+    flex: 1,
     position: 'relative',
-    zIndex: 20,
+    zIndex: 50,
   },
   triggerButton: {
+    height: 46,
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    minWidth: 132,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
   },
   caption: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     color: THEME_COLORS.textMuted,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   selectedValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: THEME_COLORS.textPrimary,
-    marginTop: 2,
+    marginTop: 1,
   },
   dropdownPanel: {
     position: 'absolute',
-    top: 56,
+    top: 52,
     left: 0,
-    minWidth: 240,
+    minWidth: 220,
     backgroundColor: THEME_COLORS.backgroundSurface,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 12,
     paddingVertical: 6,
     elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    zIndex: 100,
   },
   optionRow: {
     paddingHorizontal: 14,
@@ -101,12 +109,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME_COLORS.backgroundInteractive,
   },
   optionText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: THEME_COLORS.textSecondary,
   },
   optionTextSelected: {
-    color: THEME_COLORS.accentInTune,
+    color: THEME_COLORS.textPrimary,
     fontWeight: '700',
   },
 });

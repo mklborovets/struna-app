@@ -30,6 +30,8 @@ import {
 export interface TunerPageViewModel {
   readonly permissionStatus: MicrophonePermissionStatus;
   readonly isPermissionGranted: boolean;
+  readonly isListening: boolean;
+  readonly toggleListening: () => void;
   readonly requestMicrophonePermission: () => void;
   readonly openSystemSettings: () => void;
   readonly activePreset: TuningPreset;
@@ -91,6 +93,8 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     permissionStatus,
     isPermissionGranted,
     isCapturing,
+    isCaptureRequested,
+    setCaptureRequested,
     requestPermission,
     openSystemSettings,
   } = useAudioLifecycle();
@@ -120,6 +124,10 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     selectManualString,
     toggleLockMode,
   } = useStringLock();
+
+  const toggleListening = useCallback(() => {
+    setCaptureRequested(!isCaptureRequested);
+  }, [isCaptureRequested, setCaptureRequested]);
 
   const candidateTargetFrequenciesHz = useMemo<readonly number[]>(
     () =>
@@ -202,6 +210,8 @@ export const useTunerPageModel = (): TunerPageViewModel => {
   return {
     permissionStatus,
     isPermissionGranted,
+    isListening: isCapturing,
+    toggleListening,
     requestMicrophonePermission: handleRequestPermission,
     openSystemSettings: handleOpenSettings,
     activePreset,

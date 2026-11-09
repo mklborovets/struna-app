@@ -56,20 +56,21 @@ export const CalibrationStepper: React.FC<CalibrationStepperProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    gap: 6,
+    paddingHorizontal: 8,
   },
   stepButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 7,
     backgroundColor: THEME_COLORS.backgroundInteractive,
     alignItems: 'center',
     justifyContent: 'center',
@@ -78,27 +79,27 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   minusBar: {
-    width: 12,
+    width: 11,
     height: 2,
     backgroundColor: THEME_COLORS.textPrimary,
     borderRadius: 1,
   },
   plusContainer: {
-    width: 12,
-    height: 12,
+    width: 11,
+    height: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   plusVerticalBar: {
     position: 'absolute',
     width: 2,
-    height: 12,
+    height: 11,
     backgroundColor: THEME_COLORS.textPrimary,
     borderRadius: 1,
   },
   centerBadge: {
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
   label: {
     fontSize: 9,
@@ -110,5 +111,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: THEME_COLORS.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
 });

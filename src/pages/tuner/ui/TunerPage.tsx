@@ -5,6 +5,7 @@ import { CalibrationStepper } from '@/features/calibrate-a4';
 import { TuningDropdown } from '@/features/select-tuning';
 import { StringLockSwitch } from '@/features/toggle-string-lock';
 import { THEME_COLORS } from '@/shared/config/theme';
+import { MicIcon } from '@/shared/ui/icons/MicIcon';
 import { Surface } from '@/shared/ui/Surface';
 import { FretboardSelector } from '@/widgets/fretboard-selector';
 import { PitchGauge } from '@/widgets/pitch-gauge';
@@ -46,30 +47,61 @@ export const TunerPage: React.FC = () => {
         </Surface>
       ) : null}
 
-      <View style={styles.topControlsBar}>
-        <TuningDropdown
-          activePreset={vm.activePreset}
-          availablePresets={vm.availablePresets}
-          isMenuOpen={vm.isMenuOpen}
-          onToggleMenu={vm.toggleMenu}
-          onSelectPreset={vm.selectPreset}
-        />
+      <View style={styles.topControlsSection}>
+        <View style={styles.controlsRow}>
+          <TuningDropdown
+            activePreset={vm.activePreset}
+            availablePresets={vm.availablePresets}
+            isMenuOpen={vm.isMenuOpen}
+            onToggleMenu={vm.toggleMenu}
+            onSelectPreset={vm.selectPreset}
+          />
 
-        <CalibrationStepper
-          referenceA4Hz={vm.referenceA4Hz}
-          canDecrement={vm.canDecrementA4}
-          canIncrement={vm.canIncrementA4}
-          onDecrement={vm.decrementA4}
-          onIncrement={vm.incrementA4}
-          onReset={vm.resetA4ToStandard}
-        />
+          <CalibrationStepper
+            referenceA4Hz={vm.referenceA4Hz}
+            canDecrement={vm.canDecrementA4}
+            canIncrement={vm.canIncrementA4}
+            onDecrement={vm.decrementA4}
+            onIncrement={vm.incrementA4}
+            onReset={vm.resetA4ToStandard}
+          />
+        </View>
 
-        <StringLockSwitch
-          isAutoMode={vm.isAutoMode}
-          isDisabled={vm.isChromaticPreset}
-          lockedLabel={vm.lockedStringLabel}
-          onToggleLockMode={vm.toggleLockMode}
-        />
+        <View style={styles.controlsRow}>
+          <StringLockSwitch
+            isAutoMode={vm.isAutoMode}
+            isDisabled={vm.isChromaticPreset}
+            lockedLabel={vm.lockedStringLabel}
+            onToggleLockMode={vm.toggleLockMode}
+          />
+
+          <Pressable
+            style={[
+              styles.micToggleButton,
+              !vm.isListening ? styles.micTogglePaused : null,
+            ]}
+            onPress={vm.toggleListening}
+          >
+            <MicIcon
+              size={15}
+              color={
+                vm.isListening
+                  ? THEME_COLORS.accentInTune
+                  : THEME_COLORS.accentDanger
+              }
+              muted={!vm.isListening}
+            />
+            <Text
+              style={[
+                styles.micToggleText,
+                !vm.isListening ? styles.micToggleTextPaused : null,
+              ]}
+              numberOfLines={1}
+            >
+              {vm.isListening ? 'MIC ACTIVE' : 'MIC PAUSED'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <PitchGauge
@@ -163,26 +195,54 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.backgroundPrimary,
     letterSpacing: 0.6,
   },
-  topControlsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+  topControlsSection: {
     gap: 8,
     zIndex: 30,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  micToggleButton: {
+    flex: 1,
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME_COLORS.backgroundElevated,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.accentInTune,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  micTogglePaused: {
+    borderColor: THEME_COLORS.borderStrong,
+    backgroundColor: THEME_COLORS.backgroundSurface,
+  },
+  micToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME_COLORS.accentInTune,
+    letterSpacing: 0.6,
+  },
+  micToggleTextPaused: {
+    color: THEME_COLORS.textMuted,
   },
   centerNoteRow: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveSnapshotButton: {
-    marginTop: 6,
+    marginTop: 4,
+    height: 34,
+    justifyContent: 'center',
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
   },
   saveSnapshotDisabled: {
     opacity: 0.35,

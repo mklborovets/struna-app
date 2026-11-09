@@ -29,9 +29,9 @@ export const NoteBadge: React.FC<NoteBadgeProps> = ({
         <Text style={styles.noteText}>
           {reading ? reading.noteName : '--'}
         </Text>
-        {reading ? (
-          <Text style={styles.octaveText}>{reading.octave}</Text>
-        ) : null}
+        <Text style={styles.octaveText}>
+          {reading ? reading.octave : ''}
+        </Text>
       </View>
       <View style={styles.metricsRow}>
         <Text style={styles.frequencyText}>{formattedFrequency}</Text>
@@ -45,7 +45,8 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
+    minHeight: 180,
   },
   noteCircle: {
     width: 112,
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
+    position: 'relative',
     backgroundColor: THEME_COLORS.backgroundSurface,
   },
   statusIdle: {
@@ -71,27 +72,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME_COLORS.textPrimary,
     letterSpacing: -1,
+    textAlign: 'center',
   },
   octaveText: {
+    position: 'absolute',
+    right: 18,
+    bottom: 22,
     fontSize: 20,
     fontWeight: '600',
     color: THEME_COLORS.textMuted,
-    marginTop: 18,
-    marginLeft: 2,
   },
   metricsRow: {
-    marginTop: 10,
+    marginTop: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
     gap: 4,
   },
   frequencyText: {
     fontSize: 16,
     fontWeight: '600',
     color: THEME_COLORS.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   centsText: {
     fontSize: 14,
     fontWeight: '500',
     color: THEME_COLORS.textMuted,
+    fontVariant: ['tabular-nums'],
   },
 });

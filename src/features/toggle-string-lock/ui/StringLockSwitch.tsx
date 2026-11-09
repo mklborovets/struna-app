@@ -32,8 +32,8 @@ export const StringLockSwitch: React.FC<StringLockSwitchProps> = ({
       ) : (
         <LockIcon size={14} color={THEME_COLORS.accentWarning} />
       )}
-      <Text style={styles.modeText}>
-        {isAutoMode ? 'AUTO' : `LOCK ${lockedLabel ?? ''}`}
+      <Text style={styles.modeText} numberOfLines={1}>
+        {isAutoMode ? 'AUTO STRING' : `LOCK ${lockedLabel ?? ''}`}
       </Text>
     </Pressable>
   );
@@ -41,14 +41,16 @@ export const StringLockSwitch: React.FC<StringLockSwitchProps> = ({
 
 const styles = StyleSheet.create({
   switchButton: {
+    flex: 1,
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
     gap: 8,
   },
   switchButtonLocked: {

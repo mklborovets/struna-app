@@ -113,13 +113,19 @@ class StrunaAudioModule(
 
             val blockBuffer = FloatArray(blockFrames)
             try {
-                track.play()
                 while (isMetronomePumpRunning.get() && !Thread.currentThread().isInterrupted) {
                     val rendered = nativeRenderMetronomeBlock(blockBuffer, blockFrames)
                     if (rendered) {
+                        if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                            track.play()
+                        }
                         track.write(blockBuffer, 0, blockFrames, AudioTrack.WRITE_BLOCKING)
                     } else {
-                        Thread.sleep(15)
+                        if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                            track.pause()
+                            track.flush()
+                        }
+                        Thread.sleep(25)
                     }
                 }
             } catch (_: InterruptedException) {
