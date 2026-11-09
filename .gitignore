@@ -2,6 +2,7 @@ node_modules/
 build/
 .cxx/
 android/.gradle/
+android/local.properties
 android/app/build/
 android/build/
 ios/Pods/

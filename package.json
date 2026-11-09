@@ -10,14 +10,15 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
     "test:cpp": "cmake -S cpp/tests -B build/tests && cmake --build build/tests && ctest --test-dir build/tests --output-on-failure",
     "test:ts": "node scripts/verifyDomainMathAndPresets.mjs",
-    "test": "npm run test:cpp && npm run test:ts"
+    "test": "npm run test:cpp && npm run test:ts",
+    "postinstall": "node scripts/patchNativeLibs.mjs"
   },
   "dependencies": {
     "react": "18.2.0",
     "react-native": "0.76.5",
-    "react-native-reanimated": "^3.16.1",
-    "react-native-svg": "^15.8.0",
-    "react-native-quick-sqlite": "^8.2.3"
+    "react-native-reanimated": "3.16.7",
+    "react-native-svg": "15.8.0",
+    "react-native-quick-sqlite": "8.2.3"
   },
   "devDependencies": {
     "@react-native-community/cli": "15.0.1",
