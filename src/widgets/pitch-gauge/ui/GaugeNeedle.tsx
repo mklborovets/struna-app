@@ -1,7 +1,17 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
 import Animated, { AnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line } from 'react-native-svg';
+import {
+  GAUGE_CENTER_X,
+  GAUGE_CENTER_Y,
+  GAUGE_NEEDLE_HEIGHT,
+} from '../model/useGaugeInterpolation';
+
+const NEEDLE_WIDTH = 24;
+const NEEDLE_PIVOT_X = NEEDLE_WIDTH / 2;
+const NEEDLE_PIVOT_Y = GAUGE_NEEDLE_HEIGHT / 2;
+const NEEDLE_TIP_Y = NEEDLE_PIVOT_Y - 88;
 
 export interface GaugeNeedleProps {
   readonly animatedStyle: AnimatedStyle<ViewStyle>;
@@ -13,38 +23,43 @@ export const GaugeNeedle: React.FC<GaugeNeedleProps> = ({
   color,
 }) => {
   return (
-    <View style={styles.pivotWrapper} pointerEvents="none">
-      <Animated.View style={[styles.needleArm, animatedStyle]}>
-        <Svg width={24} height={116} viewBox="0 0 24 116">
-          <Line
-            x1={12}
-            y1={8}
-            x2={12}
-            y2={104}
-            stroke={color}
-            strokeWidth={3.5}
-            strokeLinecap="round"
-          />
-          <Circle cx={12} cy={104} r={6} fill={color} />
-        </Svg>
-      </Animated.View>
-    </View>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.needleArm, animatedStyle]}
+    >
+      <Svg
+        width={NEEDLE_WIDTH}
+        height={GAUGE_NEEDLE_HEIGHT}
+        viewBox={`0 0 ${NEEDLE_WIDTH} ${GAUGE_NEEDLE_HEIGHT}`}
+      >
+        <Line
+          x1={NEEDLE_PIVOT_X}
+          y1={NEEDLE_TIP_Y}
+          x2={NEEDLE_PIVOT_X}
+          y2={NEEDLE_PIVOT_Y}
+          stroke={color}
+          strokeWidth={3.5}
+          strokeLinecap="round"
+        />
+        <Circle
+          cx={NEEDLE_PIVOT_X}
+          cy={NEEDLE_PIVOT_Y}
+          r={6}
+          fill={color}
+        />
+      </Svg>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  pivotWrapper: {
+  needleArm: {
     position: 'absolute',
-    top: 12,
-    left: 0,
-    right: 0,
+    left: GAUGE_CENTER_X - NEEDLE_PIVOT_X,
+    top: GAUGE_CENTER_Y - NEEDLE_PIVOT_Y,
+    width: NEEDLE_WIDTH,
+    height: GAUGE_NEEDLE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  needleArm: {
-    width: 24,
-    height: 116,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
   },
 });

@@ -1,13 +1,17 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { RefObject } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { TuningPreset, TuningPresetId } from '@/entities/tuning-preset';
 import { THEME_COLORS } from '@/shared/config/theme';
+import { TuningMenuAnchor } from '../model/useTuningSelection';
 
 export interface TuningDropdownProps {
   readonly activePreset: TuningPreset;
   readonly availablePresets: readonly TuningPreset[];
   readonly isMenuOpen: boolean;
+  readonly triggerRef: RefObject<View>;
+  readonly menuAnchor: TuningMenuAnchor;
   readonly onToggleMenu: () => void;
+  readonly onCloseMenu: () => void;
   readonly onSelectPreset: (presetId: TuningPresetId) => void;
 }
 
@@ -15,11 +19,14 @@ export const TuningDropdown: React.FC<TuningDropdownProps> = ({
   activePreset,
   availablePresets,
   isMenuOpen,
+  triggerRef,
+  menuAnchor,
   onToggleMenu,
+  onCloseMenu,
   onSelectPreset,
 }) => {
   return (
-    <View style={styles.wrapper}>
+    <View ref={triggerRef} collapsable={false} style={styles.wrapper}>
       <Pressable style={styles.triggerButton} onPress={onToggleMenu}>
         <Text style={styles.caption}>TUNING</Text>
         <Text style={styles.selectedValue} numberOfLines={1}>
@@ -27,32 +34,48 @@ export const TuningDropdown: React.FC<TuningDropdownProps> = ({
         </Text>
       </Pressable>
 
-      {isMenuOpen ? (
-        <View style={styles.dropdownPanel}>
-          {availablePresets.map((preset) => {
-            const isSelected = preset.id === activePreset.id;
-            return (
-              <Pressable
-                key={preset.id}
-                style={[
-                  styles.optionRow,
-                  isSelected ? styles.optionRowSelected : null,
-                ]}
-                onPress={() => onSelectPreset(preset.id)}
-              >
-                <Text
+      <Modal
+        visible={isMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={onCloseMenu}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={onCloseMenu}>
+          <Pressable
+            style={[
+              styles.dropdownPanel,
+              {
+                top: menuAnchor.top,
+                left: menuAnchor.left,
+                minWidth: menuAnchor.width,
+              },
+            ]}
+          >
+            {availablePresets.map((preset) => {
+              const isSelected = preset.id === activePreset.id;
+              return (
+                <Pressable
+                  key={preset.id}
                   style={[
-                    styles.optionText,
-                    isSelected ? styles.optionTextSelected : null,
+                    styles.optionRow,
+                    isSelected ? styles.optionRowSelected : null,
                   ]}
+                  onPress={() => onSelectPreset(preset.id)}
                 >
-                  {preset.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+                  <Text
+                    style={[
+                      styles.optionText,
+                      isSelected ? styles.optionTextSelected : null,
+                    ]}
+                  >
+                    {preset.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -62,8 +85,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: '48%',
-    position: 'relative',
-    zIndex: 50,
   },
   triggerButton: {
     width: '100%',
@@ -87,26 +108,26 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.textPrimary,
     marginTop: 1,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
   dropdownPanel: {
     position: 'absolute',
-    top: 52,
-    left: 0,
-    minWidth: 220,
     backgroundColor: THEME_COLORS.backgroundSurface,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 12,
     paddingVertical: 6,
-    elevation: 8,
+    elevation: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    zIndex: 100,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
   },
   optionRow: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   optionRowSelected: {
     backgroundColor: THEME_COLORS.backgroundInteractive,

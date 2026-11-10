@@ -1,8 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Line, Path } from 'react-native-svg';
+import { StyleSheet, View } from 'react-native';
+import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 import { THEME_COLORS } from '@/shared/config/theme';
-import { MAJOR_GAUGE_TICK_MARKS } from '../model/useGaugeInterpolation';
+import {
+  GAUGE_FULL_ARC_PATH,
+  GAUGE_HEIGHT,
+  GAUGE_IN_TUNE_ARC_PATH,
+  GAUGE_TICK_GEOMETRIES,
+  GAUGE_WIDTH,
+} from '../model/useGaugeInterpolation';
 
 export interface CentScaleProps {
   readonly isInTune: boolean;
@@ -11,16 +17,20 @@ export interface CentScaleProps {
 export const CentScale: React.FC<CentScaleProps> = ({ isInTune }) => {
   return (
     <View style={styles.container}>
-      <Svg width={280} height={130} viewBox="0 0 280 130">
+      <Svg
+        width={GAUGE_WIDTH}
+        height={GAUGE_HEIGHT}
+        viewBox={`0 0 ${GAUGE_WIDTH} ${GAUGE_HEIGHT}`}
+      >
         <Path
-          d="M 30 115 A 110 110 0 0 1 250 115"
+          d={GAUGE_FULL_ARC_PATH}
           stroke={THEME_COLORS.borderStrong}
           strokeWidth={3}
           fill="none"
           strokeLinecap="round"
         />
         <Path
-          d="M 132 5 A 110 110 0 0 1 148 5"
+          d={GAUGE_IN_TUNE_ARC_PATH}
           stroke={
             isInTune ? THEME_COLORS.accentInTune : THEME_COLORS.textMuted
           }
@@ -28,62 +38,57 @@ export const CentScale: React.FC<CentScaleProps> = ({ isInTune }) => {
           fill="none"
           strokeLinecap="round"
         />
-        <Line
-          x1={140}
-          y1={2}
-          x2={140}
-          y2={18}
-          stroke={
-            isInTune ? THEME_COLORS.accentInTune : THEME_COLORS.textPrimary
-          }
-          strokeWidth={2.5}
-          strokeLinecap="round"
-        />
-      </Svg>
 
-      <View style={styles.labelsRow}>
-        {MAJOR_GAUGE_TICK_MARKS.map((tick) => (
-          <Text
-            key={tick.centsValue}
-            style={[
-              styles.tickLabel,
-              tick.isCenter ? styles.centerTickLabel : null,
-              tick.isCenter && isInTune ? styles.centerTickInTune : null,
-            ]}
-          >
-            {tick.label}
-          </Text>
+        {GAUGE_TICK_GEOMETRIES.map((tick) => (
+          <React.Fragment key={tick.centsValue}>
+            <Line
+              x1={tick.x1}
+              y1={tick.y1}
+              x2={tick.x2}
+              y2={tick.y2}
+              stroke={
+                tick.isCenter
+                  ? isInTune
+                    ? THEME_COLORS.accentInTune
+                    : THEME_COLORS.textPrimary
+                  : tick.isMajor
+                    ? THEME_COLORS.textSecondary
+                    : THEME_COLORS.borderStrong
+              }
+              strokeWidth={tick.isCenter ? 2.5 : tick.isMajor ? 1.8 : 1.2}
+              strokeLinecap="round"
+            />
+            {tick.label ? (
+              <SvgText
+                x={tick.labelX}
+                y={tick.labelY}
+                fill={
+                  tick.isCenter
+                    ? isInTune
+                      ? THEME_COLORS.accentInTune
+                      : THEME_COLORS.textPrimary
+                    : THEME_COLORS.textMuted
+                }
+                fontSize={11}
+                fontWeight={tick.isCenter ? '800' : '600'}
+                textAnchor="middle"
+                alignmentBaseline="central"
+              >
+                {tick.label}
+              </SvgText>
+            ) : null}
+          </React.Fragment>
         ))}
-      </View>
+      </Svg>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    width: GAUGE_WIDTH,
+    height: GAUGE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 280,
-    height: 150,
-  },
-  labelsRow: {
-    position: 'absolute',
-    bottom: 0,
-    width: 268,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  tickLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME_COLORS.textMuted,
-  },
-  centerTickLabel: {
-    fontWeight: '800',
-    color: THEME_COLORS.textPrimary,
-  },
-  centerTickInTune: {
-    color: THEME_COLORS.accentInTune,
   },
 });

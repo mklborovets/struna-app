@@ -3,6 +3,10 @@ import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { AnimatedStyle } from 'react-native-reanimated';
 import { THEME_COLORS } from '@/shared/config/theme';
 import { Surface } from '@/shared/ui/Surface';
+import {
+  GAUGE_HEIGHT,
+  GAUGE_WIDTH,
+} from '../model/useGaugeInterpolation';
 import { CentScale } from './CentScale';
 import { GaugeNeedle } from './GaugeNeedle';
 
@@ -46,16 +50,16 @@ export const PitchGauge: React.FC<PitchGaugeProps> = ({
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   statusPill: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statusText: {
     fontSize: 11,
@@ -68,9 +72,10 @@ const styles = StyleSheet.create({
   },
   dialStage: {
     position: 'relative',
-    width: 280,
-    height: 150,
+    width: GAUGE_WIDTH,
+    height: GAUGE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
 });

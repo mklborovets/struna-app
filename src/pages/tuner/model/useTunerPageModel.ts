@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
 import {
   PitchReading,
   TuningStatus,
@@ -12,7 +13,10 @@ import {
 } from '@/entities/tuning-preset';
 import { sessionRepository } from '@/entities/tuning-session';
 import { useCalibrationControl } from '@/features/calibrate-a4';
-import { useTuningSelection } from '@/features/select-tuning';
+import {
+  TuningMenuAnchor,
+  useTuningSelection,
+} from '@/features/select-tuning';
 import { useStringLock } from '@/features/toggle-string-lock';
 import { nativeStrunaEngine } from '@/shared/api/jsi';
 import { useAudioLifecycle } from '@/shared/lib/audio-session/useAppStateAudioGuard';
@@ -40,7 +44,10 @@ export interface TunerPageViewModel {
   readonly activePreset: TuningPreset;
   readonly availablePresets: readonly TuningPreset[];
   readonly isMenuOpen: boolean;
+  readonly tuningTriggerRef: RefObject<View>;
+  readonly tuningMenuAnchor: TuningMenuAnchor;
   readonly toggleMenu: () => void;
+  readonly closeMenu: () => void;
   readonly selectPreset: (presetId: TuningPresetId) => void;
   readonly referenceA4Hz: number;
   readonly canDecrementA4: boolean;
@@ -107,7 +114,10 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     activePreset,
     availablePresets,
     isMenuOpen,
+    triggerRef: tuningTriggerRef,
+    menuAnchor: tuningMenuAnchor,
     toggleMenu,
+    closeMenu,
     selectPreset,
   } = useTuningSelection();
 
@@ -300,7 +310,10 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     activePreset,
     availablePresets,
     isMenuOpen,
+    tuningTriggerRef,
+    tuningMenuAnchor,
     toggleMenu,
+    closeMenu,
     selectPreset,
     referenceA4Hz,
     canDecrementA4: canDecrement,

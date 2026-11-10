@@ -54,7 +54,10 @@ export const TunerPage: React.FC = () => {
             activePreset={vm.activePreset}
             availablePresets={vm.availablePresets}
             isMenuOpen={vm.isMenuOpen}
+            triggerRef={vm.tuningTriggerRef}
+            menuAnchor={vm.tuningMenuAnchor}
             onToggleMenu={vm.toggleMenu}
+            onCloseMenu={vm.closeMenu}
             onSelectPreset={vm.selectPreset}
           />
 
@@ -112,14 +115,14 @@ export const TunerPage: React.FC = () => {
         isInTune={vm.gauge.isInTune}
       />
 
-      <View style={styles.centerNoteRow}>
+      <Surface style={styles.centerNoteRow}>
         <NoteBadge
           reading={vm.reading}
           status={vm.status}
           formattedCents={vm.formattedCents}
           formattedFrequency={vm.formattedFrequency}
         />
-        <View style={styles.actionButtonsRow}>
+        <View style={styles.actionButtonsColumn}>
           <Pressable
             style={[
               styles.saveSnapshotButton,
@@ -134,6 +137,7 @@ export const TunerPage: React.FC = () => {
                 styles.saveSnapshotText,
                 vm.isSessionJustLogged ? styles.saveSnapshotTextLogged : null,
               ]}
+              numberOfLines={1}
             >
               {vm.isSessionJustLogged ? 'LOGGED' : 'LOG READING'}
             </Text>
@@ -147,7 +151,7 @@ export const TunerPage: React.FC = () => {
             onPress={vm.cycleDemoTone}
           >
             <WaveIcon
-              size={13}
+              size={12}
               color={
                 vm.activeDemoTone
                   ? THEME_COLORS.accentWarning
@@ -165,7 +169,7 @@ export const TunerPage: React.FC = () => {
             </Text>
           </Pressable>
         </View>
-      </View>
+      </Surface>
 
       <FretboardSelector
         strings={vm.activePreset.strings}
@@ -194,9 +198,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 28,
-    gap: 14,
+    paddingTop: 10,
+    paddingBottom: 20,
+    gap: 10,
   },
   permissionBanner: {
     flexDirection: 'row',
@@ -270,24 +274,26 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.textMuted,
   },
   centerNoteRow: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     gap: 10,
-    marginTop: 4,
+  },
+  actionButtonsColumn: {
+    flexShrink: 0,
+    gap: 6,
   },
   saveSnapshotButton: {
-    height: 34,
+    height: 28,
+    alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   saveSnapshotDisabled: {
     opacity: 0.35,
@@ -297,16 +303,16 @@ const styles = StyleSheet.create({
     backgroundColor: THEME_COLORS.backgroundInteractive,
   },
   saveSnapshotText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: THEME_COLORS.textSecondary,
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
   },
   saveSnapshotTextLogged: {
     color: THEME_COLORS.accentInTune,
   },
   demoToneButton: {
-    height: 34,
+    height: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -314,15 +320,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME_COLORS.borderStrong,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    gap: 6,
+    paddingHorizontal: 12,
+    gap: 5,
   },
   demoToneButtonActive: {
     borderColor: THEME_COLORS.accentWarning,
     backgroundColor: THEME_COLORS.backgroundInteractive,
   },
   demoToneText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: THEME_COLORS.textSecondary,
     letterSpacing: 0.6,

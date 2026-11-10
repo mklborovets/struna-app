@@ -23,6 +23,13 @@ export const NoteBadge: React.FC<NoteBadgeProps> = ({
         ? styles.statusActive
         : styles.statusIdle;
 
+  const centsToneStyle =
+    status === 'in-tune'
+      ? styles.centsInTune
+      : status === 'flat' || status === 'sharp'
+        ? styles.centsActive
+        : null;
+
   return (
     <View style={styles.container}>
       <View style={[styles.noteCircle, badgeColorStyle]}>
@@ -33,9 +40,19 @@ export const NoteBadge: React.FC<NoteBadgeProps> = ({
           {reading ? reading.octave : ''}
         </Text>
       </View>
-      <View style={styles.metricsRow}>
-        <Text style={styles.frequencyText}>{formattedFrequency}</Text>
-        <Text style={styles.centsText}>{formattedCents}</Text>
+
+      <View style={styles.metricsColumn}>
+        <Text
+          style={styles.frequencyText}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+        >
+          {formattedFrequency}
+        </Text>
+        <Text style={[styles.centsText, centsToneStyle]} numberOfLines={1}>
+          {formattedCents}
+        </Text>
       </View>
     </View>
   );
@@ -43,20 +60,22 @@ export const NoteBadge: React.FC<NoteBadgeProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    minHeight: 180,
+    gap: 10,
   },
   noteCircle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    backgroundColor: THEME_COLORS.backgroundSurface,
+    flexShrink: 0,
+    backgroundColor: THEME_COLORS.backgroundPrimary,
   },
   statusIdle: {
     borderColor: THEME_COLORS.borderStrong,
@@ -68,37 +87,42 @@ const styles = StyleSheet.create({
     borderColor: THEME_COLORS.accentInTune,
   },
   noteText: {
-    fontSize: 48,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: THEME_COLORS.textPrimary,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
   octaveText: {
     position: 'absolute',
-    right: 18,
-    bottom: 22,
-    fontSize: 20,
-    fontWeight: '600',
+    right: 8,
+    bottom: 9,
+    fontSize: 12,
+    fontWeight: '700',
     color: THEME_COLORS.textMuted,
   },
-  metricsRow: {
-    marginTop: 8,
-    alignItems: 'center',
+  metricsColumn: {
+    flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
-    height: 48,
-    gap: 4,
+    gap: 3,
   },
   frequencyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME_COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME_COLORS.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   centsText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
     color: THEME_COLORS.textMuted,
     fontVariant: ['tabular-nums'],
+  },
+  centsActive: {
+    color: THEME_COLORS.accentWarning,
+  },
+  centsInTune: {
+    color: THEME_COLORS.accentInTune,
   },
 });

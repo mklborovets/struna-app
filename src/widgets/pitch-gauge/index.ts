@@ -1,10 +1,11 @@
 export {
+  GAUGE_TICK_GEOMETRIES,
   GAUGE_TICK_MARKS,
-  MAJOR_GAUGE_TICK_MARKS,
   useGaugeInterpolation,
 } from './model/useGaugeInterpolation';
 export type {
   GaugeInterpolationResult,
+  GaugeTickGeometry,
   GaugeTickMark,
   UseGaugeInterpolationParams,
 } from './model/useGaugeInterpolation';
