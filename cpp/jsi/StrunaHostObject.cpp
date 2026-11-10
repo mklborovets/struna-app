@@ -4,8 +4,8 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <string>   // IWYU pragma: keep
-#include <utility>  // IWYU pragma: keep
+#include <string>
+#include <utility>
 
 namespace struna {
 
@@ -206,6 +206,7 @@ void StrunaHostObject::copyWaveformSnapshotNative(
         return;
     }
 
+    std::lock_guard<std::mutex> lock(dspMutex_);
     std::array<float, kDefaultAnalysisWindowSize> window{};
     if (!ringBuffer_.copyLatestWindow(window.data(), window.size())) {
         std::fill(targetBuffer, targetBuffer + length, 0.0f);
@@ -372,6 +373,8 @@ std::vector<facebook::jsi::PropNameID> StrunaHostObject::getPropertyNames(
         "setNoiseGateThresholdDb",
         "setMetronomeBpm",
         "setMetronomeActive",
+        "getMetronomeBpm",
+        "isMetronomeActive",
         "setDemoMode",
         "isDemoModeActive");
 }
@@ -533,6 +536,34 @@ facebook::jsi::Value StrunaHostObject::get(
                     setMetronomeActive(args[0].getBool());
                 }
                 return facebook::jsi::Value::undefined();
+            });
+    }
+
+    if (propName == "getMetronomeBpm") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime,
+            name,
+            0,
+            [this](
+                facebook::jsi::Runtime&,
+                const facebook::jsi::Value&,
+                const facebook::jsi::Value*,
+                std::size_t) -> facebook::jsi::Value {
+                return facebook::jsi::Value(static_cast<double>(getMetronomeBpm()));
+            });
+    }
+
+    if (propName == "isMetronomeActive") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime,
+            name,
+            0,
+            [this](
+                facebook::jsi::Runtime&,
+                const facebook::jsi::Value&,
+                const facebook::jsi::Value*,
+                std::size_t) -> facebook::jsi::Value {
+                return facebook::jsi::Value(isMetronomeActive());
             });
     }
 

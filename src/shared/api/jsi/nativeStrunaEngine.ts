@@ -134,6 +134,22 @@ export const nativeStrunaEngine: StrunaJsiEngine = {
     }
   },
 
+  getMetronomeBpm(): number {
+    const engine = resolveJsiEngine();
+    if (engine && typeof engine.getMetronomeBpm === 'function') {
+      return engine.getMetronomeBpm();
+    }
+    return fallbackMetronomeBpm;
+  },
+
+  isMetronomeActive(): boolean {
+    const engine = resolveJsiEngine();
+    if (engine && typeof engine.isMetronomeActive === 'function') {
+      return engine.isMetronomeActive();
+    }
+    return fallbackMetronomeActive;
+  },
+
   setDemoMode(enabled: boolean, frequencyHz?: number): void {
     const engine = resolveJsiEngine();
     if (engine && typeof engine.setDemoMode === 'function') {

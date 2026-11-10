@@ -14,6 +14,8 @@ export interface StrunaJsiEngine {
   setNoiseGateThresholdDb(decibels: number): void;
   setMetronomeBpm(bpm: number): void;
   setMetronomeActive(active: boolean): void;
+  getMetronomeBpm?(): number;
+  isMetronomeActive?(): boolean;
   setDemoMode?(enabled: boolean, frequencyHz?: number): void;
   isDemoModeActive?(): boolean;
 }
