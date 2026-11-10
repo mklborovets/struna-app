@@ -10,6 +10,7 @@
 + (instancetype)shared;
 - (BOOL)startCapture;
 - (void)stopCapture;
+- (void)setMetronomeActive:(BOOL)active;
 @end
 
 namespace {
@@ -41,11 +42,23 @@ void stopIosAudioCapture() noexcept {
     }
 }
 
+void setIosMetronomeActive(bool active) noexcept {
+    Class cls = resolveCaptureServiceClass();
+    if (cls == Nil) {
+        return;
+    }
+    id service = [cls shared];
+    if (service != nil) {
+        [service setMetronomeActive:active ? YES : NO];
+    }
+}
+
 std::shared_ptr<struna::StrunaHostObject>& getIosSharedHostObject() noexcept {
     static std::shared_ptr<struna::StrunaHostObject> instance =
         std::make_shared<struna::StrunaHostObject>(
             []() { return startIosAudioCapture(); },
-            []() { stopIosAudioCapture(); });
+            []() { stopIosAudioCapture(); },
+            [](bool active) { setIosMetronomeActive(active); });
     return instance;
 }
 

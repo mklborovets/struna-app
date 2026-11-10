@@ -36,10 +36,12 @@ class StrunaHostObject : public facebook::jsi::HostObject {
 public:
     using StartCaptureCallback = std::function<bool()>;
     using StopCaptureCallback = std::function<void()>;
+    using SetMetronomeCallback = std::function<void(bool)>;
 
     explicit StrunaHostObject(
         StartCaptureCallback onStartCapture = nullptr,
-        StopCaptureCallback onStopCapture = nullptr) noexcept;
+        StopCaptureCallback onStopCapture = nullptr,
+        SetMetronomeCallback onSetMetronome = nullptr) noexcept;
 
     ~StrunaHostObject() override = default;
 
@@ -83,6 +85,7 @@ private:
     mutable std::mutex dspMutex_;
     StartCaptureCallback onStartCapture_;
     StopCaptureCallback onStopCapture_;
+    SetMetronomeCallback onSetMetronome_;
     std::atomic<bool> isCapturing_;
     std::atomic<float> sampleRateHz_;
     std::chrono::steady_clock::time_point lastPollTimestamp_;

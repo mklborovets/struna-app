@@ -74,9 +74,11 @@ TypedArraySlice extractFloat32Slice(
 
 StrunaHostObject::StrunaHostObject(
     StartCaptureCallback onStartCapture,
-    StopCaptureCallback onStopCapture) noexcept
+    StopCaptureCallback onStopCapture,
+    SetMetronomeCallback onSetMetronome) noexcept
     : onStartCapture_(std::move(onStartCapture)),
       onStopCapture_(std::move(onStopCapture)),
+      onSetMetronome_(std::move(onSetMetronome)),
       isCapturing_(false),
       sampleRateHz_(48000.0f),
       lastPollTimestamp_(std::chrono::steady_clock::now()),
@@ -306,6 +308,14 @@ void StrunaHostObject::setMetronomeBpm(float bpm) noexcept {
 
 void StrunaHostObject::setMetronomeActive(bool active) noexcept {
     metronomeScheduler_.setActive(active);
+    SetMetronomeCallback cb;
+    {
+        std::lock_guard<std::mutex> lock(dspMutex_);
+        cb = onSetMetronome_;
+    }
+    if (cb) {
+        cb(active);
+    }
 }
 
 float StrunaHostObject::getMetronomeBpm() const noexcept {
