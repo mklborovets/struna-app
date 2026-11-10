@@ -55,7 +55,6 @@ public:
             return;
         }
         std::size_t writePos = writeCursor_.load(std::memory_order_relaxed);
-        const std::size_t readPos = readCursor_.load(std::memory_order_acquire);
 
         for (std::size_t i = 0; i < count; ++i) {
             storage_[(writePos + i) & kIndexMask].store(
@@ -64,9 +63,6 @@ public:
         }
 
         writePos += count;
-        if (writePos > readPos && (writePos - readPos) > Capacity) {
-            readCursor_.store(writePos - Capacity, std::memory_order_release);
-        }
         writeCursor_.store(writePos, std::memory_order_release);
         totalWritten_.fetch_add(count, std::memory_order_release);
     }
@@ -110,8 +106,8 @@ public:
     }
 
     void clear() noexcept {
-        writeCursor_.store(0, std::memory_order_release);
-        readCursor_.store(0, std::memory_order_release);
+        const std::size_t currentWrite = writeCursor_.load(std::memory_order_acquire);
+        readCursor_.store(currentWrite, std::memory_order_release);
         totalWritten_.store(0, std::memory_order_release);
     }
 

@@ -54,6 +54,26 @@ void testRingBufferAndRmsGate() {
         requireNear(outputSamples[i], inputSamples[i], 1.0e-7f, "RingBuffer sample integrity");
     }
 
+    ringBuffer.pushOverwrite(inputSamples.data(), inputSamples.size());
+    std::vector<float> windowCopy(2048, 0.0f);
+    requireTrue(
+        ringBuffer.copyLatestWindow(windowCopy.data(), windowCopy.size()),
+        "RingBuffer copyLatestWindow succeeds after pushOverwrite");
+    requireNear(
+        windowCopy.back(),
+        inputSamples.back(),
+        1.0e-7f,
+        "RingBuffer copyLatestWindow latest sample matches tail of pushOverwrite");
+
+    ringBuffer.clear();
+    requireTrue(
+        !ringBuffer.copyLatestWindow(windowCopy.data(), windowCopy.size()),
+        "RingBuffer copyLatestWindow returns false immediately after clear");
+    ringBuffer.pushOverwrite(inputSamples.data(), 2048);
+    requireTrue(
+        ringBuffer.copyLatestWindow(windowCopy.data(), windowCopy.size()),
+        "RingBuffer copyLatestWindow recovers after clear + pushOverwrite");
+
     std::vector<float> silenceBuffer(1024, 0.0f);
     const float silenceRmsDb =
         struna::RmsGate::computeRmsDb(silenceBuffer.data(), silenceBuffer.size());

@@ -98,7 +98,8 @@ void StrunaHostObject::setCaptureCallbacks(
 }
 
 void StrunaHostObject::pushAudioSamples(const float* samples, std::size_t count) noexcept {
-    if (isDemoMode_.load(std::memory_order_relaxed)) {
+    std::unique_lock<std::mutex> lock(dspMutex_, std::try_to_lock);
+    if (!lock.owns_lock() || isDemoMode_.load(std::memory_order_relaxed)) {
         return;
     }
     ringBuffer_.pushOverwrite(samples, count);
