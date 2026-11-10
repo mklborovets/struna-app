@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PitchReading,
   TuningStatus,
@@ -14,6 +14,7 @@ import { sessionRepository } from '@/entities/tuning-session';
 import { useCalibrationControl } from '@/features/calibrate-a4';
 import { useTuningSelection } from '@/features/select-tuning';
 import { useStringLock } from '@/features/toggle-string-lock';
+import { nativeStrunaEngine } from '@/shared/api/jsi';
 import { useAudioLifecycle } from '@/shared/lib/audio-session/useAppStateAudioGuard';
 import { MicrophonePermissionStatus } from '@/shared/lib/permissions/useMicrophonePermission';
 import { useStringMatching } from '@/widgets/fretboard-selector';
@@ -32,6 +33,8 @@ export interface TunerPageViewModel {
   readonly isPermissionGranted: boolean;
   readonly isListening: boolean;
   readonly toggleListening: () => void;
+  readonly activeDemoTone: string | null;
+  readonly cycleDemoTone: () => void;
   readonly requestMicrophonePermission: () => void;
   readonly openSystemSettings: () => void;
   readonly activePreset: TuningPreset;
@@ -64,6 +67,7 @@ export interface TunerPageViewModel {
   readonly spectrumBars: readonly SpectrumBarPoint[];
   readonly toggleMonitorMode: () => void;
   readonly canRecordSession: boolean;
+  readonly isSessionJustLogged: boolean;
   readonly recordCurrentTuningToHistory: () => void;
 }
 
@@ -129,6 +133,43 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     setCaptureRequested(!isCaptureRequested);
   }, [isCaptureRequested, setCaptureRequested]);
 
+  const [demoToneIndex, setDemoToneIndex] = useState<number>(-1);
+  const demoTones = useMemo(
+    () => [
+      { label: 'A2 (110 Hz)', freq: 110.0 },
+      { label: 'E2 (82.4 Hz)', freq: 82.41 },
+      { label: 'D3 (-18c)', freq: 145.31 },
+      { label: 'D3 (146.8 Hz)', freq: 146.83 },
+      { label: 'G3 (+16c)', freq: 197.82 },
+      { label: 'G3 (196 Hz)', freq: 196.0 },
+      { label: 'B3 (246.9 Hz)', freq: 246.94 },
+      { label: 'E4 (329.6 Hz)', freq: 329.63 },
+    ],
+    []
+  );
+
+  const cycleDemoTone = useCallback(() => {
+    setDemoToneIndex((prev) => {
+      const next = prev + 1;
+      if (next >= demoTones.length) {
+        nativeStrunaEngine.setDemoMode?.(false);
+        return -1;
+      }
+      const tone = demoTones[next];
+      if (tone) {
+        nativeStrunaEngine.setDemoMode?.(true, tone.freq);
+      }
+      return next;
+    });
+  }, [demoTones]);
+
+  const activeDemoTone =
+    demoToneIndex >= 0 && demoToneIndex < demoTones.length
+      ? demoTones[demoToneIndex]!.label
+      : null;
+
+  const isStreamActive = isCapturing || activeDemoTone !== null;
+
   const candidateTargetFrequenciesHz = useMemo<readonly number[]>(
     () =>
       activePreset.isChromatic
@@ -143,7 +184,7 @@ export const useTunerPageModel = (): TunerPageViewModel => {
       ? lockedGuitarString.frequencyHz
       : null,
     candidateTargetFrequenciesHz,
-    enabled: isCapturing,
+    enabled: isStreamActive,
   });
 
   const currentFreq = pitchStream.reading?.frequencyHz ?? 0;
@@ -167,7 +208,35 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     cents: effectiveCents,
   });
 
-  const waveformMonitor = useWaveformFrame(isCapturing);
+  const waveformMonitor = useWaveformFrame(isStreamActive);
+
+  const lastValidSnapshotRef = useRef<{
+    reading: PitchReading;
+    matchedString: GuitarString | null;
+    cents: number;
+  } | null>(null);
+  const [hasSnapshotToLog, setHasSnapshotToLog] = useState<boolean>(false);
+  const [isSessionJustLogged, setIsSessionJustLogged] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    if (pitchStream.isLocked && pitchStream.reading) {
+      lastValidSnapshotRef.current = {
+        reading: pitchStream.reading,
+        matchedString: stringMatch.matchedString,
+        cents: effectiveCents,
+      };
+      if (!hasSnapshotToLog) {
+        setHasSnapshotToLog(true);
+      }
+    }
+  }, [
+    effectiveCents,
+    hasSnapshotToLog,
+    pitchStream.isLocked,
+    pitchStream.reading,
+    stringMatch.matchedString,
+  ]);
 
   const handleRequestPermission = useCallback(() => {
     void requestPermission();
@@ -178,26 +247,38 @@ export const useTunerPageModel = (): TunerPageViewModel => {
   }, [openSystemSettings]);
 
   const recordCurrentTuningToHistory = useCallback(() => {
-    if (!pitchStream.reading) {
+    const activeReading =
+      pitchStream.reading ?? lastValidSnapshotRef.current?.reading ?? null;
+    if (!activeReading) {
       return;
     }
-    const targetString = stringMatch.matchedString;
+    const targetString = pitchStream.reading
+      ? stringMatch.matchedString
+      : (lastValidSnapshotRef.current?.matchedString ?? null);
+    const centsToRecord = pitchStream.reading
+      ? effectiveCents
+      : (lastValidSnapshotRef.current?.cents ?? activeReading.cents);
+
     sessionRepository.recordTunedString({
       presetId: activePreset.id,
       presetName: activePreset.shortLabel,
       stringLabel: targetString ? targetString.label : 'CHM',
-      noteName: `${pitchStream.reading.noteName}${pitchStream.reading.octave}`,
+      noteName: `${activeReading.noteName}${activeReading.octave}`,
       targetFrequencyHz:
         Math.round(
           (targetString
             ? targetString.frequencyHz
-            : pitchStream.reading.targetFrequencyHz) * 100
+            : activeReading.targetFrequencyHz) * 100
         ) / 100,
-      measuredFrequencyHz:
-        Math.round(pitchStream.reading.frequencyHz * 100) / 100,
-      centsDeviation: effectiveCents,
+      measuredFrequencyHz: Math.round(activeReading.frequencyHz * 100) / 100,
+      centsDeviation: centsToRecord,
       referenceA4Hz,
     });
+
+    setIsSessionJustLogged(true);
+    setTimeout(() => {
+      setIsSessionJustLogged(false);
+    }, 1200);
   }, [
     activePreset.id,
     activePreset.shortLabel,
@@ -212,6 +293,8 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     isPermissionGranted,
     isListening: isCapturing,
     toggleListening,
+    activeDemoTone,
+    cycleDemoTone,
     requestMicrophonePermission: handleRequestPermission,
     openSystemSettings: handleOpenSettings,
     activePreset,
@@ -248,7 +331,10 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     svgWaveformPath: waveformMonitor.svgWaveformPath,
     spectrumBars: waveformMonitor.spectrumBars,
     toggleMonitorMode: waveformMonitor.toggleMode,
-    canRecordSession: pitchStream.isLocked && pitchStream.reading !== null,
+    canRecordSession:
+      (pitchStream.isLocked && pitchStream.reading !== null) ||
+      hasSnapshotToLog,
+    isSessionJustLogged,
     recordCurrentTuningToHistory,
   };
 };

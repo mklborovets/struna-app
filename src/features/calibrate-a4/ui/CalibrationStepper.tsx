@@ -56,7 +56,9 @@ export const CalibrationStepper: React.FC<CalibrationStepperProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '48%',
     height: 46,
     flexDirection: 'row',
     alignItems: 'center',
@@ -68,8 +70,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   stepButton: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: 7,
     backgroundColor: THEME_COLORS.backgroundInteractive,
     alignItems: 'center',
@@ -98,6 +100,8 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   centerBadge: {
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     paddingHorizontal: 4,
   },

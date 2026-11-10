@@ -11,3 +11,9 @@ ios/build/
 *.aab
 *.ipa
 .DS_Store
+.cache/
+.clangd
+.vscode/
+compile_commands.json
+compile_flags.txt
+**/xcuserdata/

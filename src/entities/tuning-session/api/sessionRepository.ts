@@ -117,6 +117,11 @@ export const sessionRepository = {
     return result.rows.map(mapRowToSessionRecord);
   },
 
+  deleteSessionById(id: number): void {
+    sqliteClient.executeSql('DELETE FROM tuning_sessions WHERE id = ?;', [id]);
+    emitSessionsChanged();
+  },
+
   clearAllSessions(): void {
     sqliteClient.executeSql('DELETE FROM tuning_sessions;');
     emitSessionsChanged();

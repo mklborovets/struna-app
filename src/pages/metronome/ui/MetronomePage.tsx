@@ -89,7 +89,7 @@ export const MetronomePage: React.FC = () => {
         onPress={vm.toggleActive}
       >
         <Text style={styles.primaryActionText}>
-          {vm.isActive ? 'STOP C++ METRONOME' : 'START C++ METRONOME'}
+          {vm.isActive ? 'STOP METRONOME' : 'START METRONOME'}
         </Text>
       </Pressable>
     </View>

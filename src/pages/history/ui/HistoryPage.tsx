@@ -1,35 +1,13 @@
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { TuningSessionRecord } from '@/entities/tuning-session';
 import { THEME_COLORS } from '@/shared/config/theme';
 import { Surface } from '@/shared/ui/Surface';
 import { Typography } from '@/shared/ui/Typography';
-import { useHistoryPageModel } from '../model/useHistoryPageModel';
-
-const renderHistoryItem = ({ item }: { item: TuningSessionRecord }) => {
-  const sign = item.centsDeviation > 0 ? '+' : '';
-  return (
-    <Surface style={styles.recordCard}>
-      <View style={styles.recordLeft}>
-        <Text style={styles.noteTitle}>
-          {item.stringLabel} / {item.noteName}
-        </Text>
-        <Text style={styles.presetSubtext}>
-          {item.presetName} (A4 = {item.referenceA4Hz} Hz)
-        </Text>
-      </View>
-      <View style={styles.recordRight}>
-        <Text style={styles.freqText}>
-          {item.measuredFrequencyHz.toFixed(2)} Hz
-        </Text>
-        <Text style={styles.centsBadge}>
-          {sign}
-          {item.centsDeviation.toFixed(1)} cents
-        </Text>
-      </View>
-    </Surface>
-  );
-};
+import { TrashIcon } from '@/shared/ui/icons/TrashIcon';
+import {
+  HistoryLogViewItem,
+  useHistoryPageModel,
+} from '../model/useHistoryPageModel';
 
 export const HistoryPage: React.FC = () => {
   const vm = useHistoryPageModel();
@@ -51,11 +29,63 @@ export const HistoryPage: React.FC = () => {
       </View>
 
       {vm.hasRecords ? (
-        <FlatList
-          data={vm.records}
+        <FlatList<HistoryLogViewItem>
+          data={vm.items}
           keyExtractor={(item) => String(item.id)}
-          renderItem={renderHistoryItem}
           contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <Surface style={styles.recordCard}>
+              <View style={styles.cardTopRow}>
+                <View style={styles.titleCluster}>
+                  <Text style={styles.noteTitle}>{item.titleText}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { borderColor: item.statusColor },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        { color: item.statusColor },
+                      ]}
+                    >
+                      {item.statusLabel}
+                    </Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  style={styles.deleteButton}
+                  hitSlop={8}
+                  onPress={() => vm.deleteHistoryRecord(item.id)}
+                >
+                  <TrashIcon size={15} color={THEME_COLORS.textMuted} />
+                </Pressable>
+              </View>
+
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCell}>
+                  <Text style={styles.metricLabel}>MEASURED</Text>
+                  <Text style={styles.metricValue}>{item.measuredText}</Text>
+                </View>
+                <View style={styles.metricCell}>
+                  <Text style={styles.metricLabel}>TARGET</Text>
+                  <Text style={styles.metricValue}>{item.targetText}</Text>
+                </View>
+                <View style={[styles.metricCell, styles.metricCellRight]}>
+                  <Text style={styles.metricLabel}>DEVIATION</Text>
+                  <Text
+                    style={[styles.metricValue, { color: item.statusColor }]}
+                  >
+                    {item.deviationText}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.presetSubtext}>{item.metadataText}</Text>
+            </Surface>
+          )}
         />
       ) : (
         <Surface style={styles.emptyCard}>
@@ -103,38 +133,85 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   recordCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    gap: 8,
   },
-  recordLeft: {
-    gap: 2,
+  titleCluster: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   noteTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: THEME_COLORS.textPrimary,
   },
-  presetSubtext: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: THEME_COLORS.textMuted,
+  statusBadge: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    backgroundColor: THEME_COLORS.backgroundElevated,
   },
-  recordRight: {
-    alignItems: 'flex-end',
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  deleteButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: THEME_COLORS.backgroundElevated,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME_COLORS.backgroundPrimary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.borderSubtle,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  metricCell: {
+    flex: 1,
     gap: 2,
   },
-  freqText: {
-    fontSize: 14,
+  metricCellRight: {
+    alignItems: 'flex-end',
+  },
+  metricLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME_COLORS.textMuted,
+    letterSpacing: 0.7,
+  },
+  metricValue: {
+    fontSize: 13,
     fontWeight: '700',
     color: THEME_COLORS.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
-  centsBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME_COLORS.accentInTune,
+  presetSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: THEME_COLORS.textMuted,
   },
   emptyCard: {
     marginTop: 24,

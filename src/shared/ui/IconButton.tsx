@@ -14,6 +14,7 @@ export interface IconButtonProps {
   readonly label?: string;
   readonly active?: boolean;
   readonly disabled?: boolean;
+  readonly compact?: boolean;
   readonly onPress: () => void;
   readonly style?: StyleProp<ViewStyle>;
 }
@@ -23,6 +24,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   label,
   active = false,
   disabled = false,
+  compact = false,
   onPress,
   style,
 }) => {
@@ -30,6 +32,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
     <Pressable
       style={[
         styles.button,
+        compact ? styles.buttonCompact : null,
         active ? styles.buttonActive : null,
         disabled ? styles.buttonDisabled : null,
         style,
@@ -42,8 +45,10 @@ export const IconButton: React.FC<IconButtonProps> = ({
         <Text
           style={[
             styles.labelText,
+            compact ? styles.labelTextCompact : null,
             active ? styles.labelTextActive : null,
           ]}
+          numberOfLines={1}
         >
           {label}
         </Text>
@@ -65,6 +70,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
+  buttonCompact: {
+    borderRadius: THEME_RADII.sm + 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 5,
+  },
   buttonActive: {
     backgroundColor: THEME_COLORS.backgroundInteractive,
     borderColor: THEME_COLORS.accentInTune,
@@ -81,6 +92,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME_COLORS.textSecondary,
     letterSpacing: 0.5,
+  },
+  labelTextCompact: {
+    fontSize: 11,
+    letterSpacing: 0.4,
   },
   labelTextActive: {
     color: THEME_COLORS.accentInTune,

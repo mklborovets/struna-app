@@ -59,11 +59,14 @@ export const TuningDropdown: React.FC<TuningDropdownProps> = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '48%',
     position: 'relative',
     zIndex: 50,
   },
   triggerButton: {
+    width: '100%',
     height: 46,
     backgroundColor: THEME_COLORS.backgroundElevated,
     borderWidth: 1,

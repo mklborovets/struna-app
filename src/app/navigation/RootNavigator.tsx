@@ -22,12 +22,15 @@ export const RootNavigator: React.FC = () => {
         backgroundColor={THEME_COLORS.backgroundPrimary}
       />
       <View style={styles.header}>
-        <Typography variant="title">STRUNA</Typography>
+        <Typography variant="title" style={styles.brandTitle}>
+          STRUNA
+        </Typography>
         <View style={styles.navTabs}>
           <IconButton
+            compact
             icon={
               <TuningForkIcon
-                size={16}
+                size={14}
                 color={
                   activeTab === 'tuner'
                     ? THEME_COLORS.accentInTune
@@ -40,9 +43,10 @@ export const RootNavigator: React.FC = () => {
             onPress={() => setActiveTab('tuner')}
           />
           <IconButton
+            compact
             icon={
               <MetronomeIcon
-                size={16}
+                size={14}
                 color={
                   activeTab === 'metronome'
                     ? THEME_COLORS.accentInTune
@@ -55,9 +59,10 @@ export const RootNavigator: React.FC = () => {
             onPress={() => setActiveTab('metronome')}
           />
           <IconButton
+            compact
             icon={
               <HistoryIcon
-                size={16}
+                size={14}
                 color={
                   activeTab === 'history'
                     ? THEME_COLORS.accentInTune
@@ -95,13 +100,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    gap: 10,
     borderBottomWidth: 1,
     borderBottomColor: THEME_COLORS.borderSubtle,
+  },
+  brandTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    flexShrink: 0,
   },
   navTabs: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexShrink: 1,
     gap: 6,
   },
   pageViewport: {

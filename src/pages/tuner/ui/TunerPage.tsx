@@ -6,6 +6,7 @@ import { TuningDropdown } from '@/features/select-tuning';
 import { StringLockSwitch } from '@/features/toggle-string-lock';
 import { THEME_COLORS } from '@/shared/config/theme';
 import { MicIcon } from '@/shared/ui/icons/MicIcon';
+import { WaveIcon } from '@/shared/ui/icons/WaveIcon';
 import { Surface } from '@/shared/ui/Surface';
 import { FretboardSelector } from '@/widgets/fretboard-selector';
 import { PitchGauge } from '@/widgets/pitch-gauge';
@@ -118,16 +119,52 @@ export const TunerPage: React.FC = () => {
           formattedCents={vm.formattedCents}
           formattedFrequency={vm.formattedFrequency}
         />
-        <Pressable
-          style={[
-            styles.saveSnapshotButton,
-            !vm.canRecordSession ? styles.saveSnapshotDisabled : null,
-          ]}
-          disabled={!vm.canRecordSession}
-          onPress={vm.recordCurrentTuningToHistory}
-        >
-          <Text style={styles.saveSnapshotText}>LOG READING</Text>
-        </Pressable>
+        <View style={styles.actionButtonsRow}>
+          <Pressable
+            style={[
+              styles.saveSnapshotButton,
+              !vm.canRecordSession ? styles.saveSnapshotDisabled : null,
+              vm.isSessionJustLogged ? styles.saveSnapshotLogged : null,
+            ]}
+            disabled={!vm.canRecordSession}
+            onPress={vm.recordCurrentTuningToHistory}
+          >
+            <Text
+              style={[
+                styles.saveSnapshotText,
+                vm.isSessionJustLogged ? styles.saveSnapshotTextLogged : null,
+              ]}
+            >
+              {vm.isSessionJustLogged ? 'LOGGED' : 'LOG READING'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.demoToneButton,
+              vm.activeDemoTone ? styles.demoToneButtonActive : null,
+            ]}
+            onPress={vm.cycleDemoTone}
+          >
+            <WaveIcon
+              size={13}
+              color={
+                vm.activeDemoTone
+                  ? THEME_COLORS.accentWarning
+                  : THEME_COLORS.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.demoToneText,
+                vm.activeDemoTone ? styles.demoToneTextActive : null,
+              ]}
+              numberOfLines={1}
+            >
+              {vm.activeDemoTone ? vm.activeDemoTone : 'TEST TONE'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <FretboardSelector
@@ -205,7 +242,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   micToggleButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '48%',
     height: 46,
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,8 +273,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveSnapshotButton: {
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     marginTop: 4,
+  },
+  saveSnapshotButton: {
     height: 34,
     justifyContent: 'center',
     backgroundColor: THEME_COLORS.backgroundElevated,
@@ -247,10 +292,42 @@ const styles = StyleSheet.create({
   saveSnapshotDisabled: {
     opacity: 0.35,
   },
+  saveSnapshotLogged: {
+    borderColor: THEME_COLORS.accentInTune,
+    backgroundColor: THEME_COLORS.backgroundInteractive,
+  },
   saveSnapshotText: {
     fontSize: 11,
     fontWeight: '700',
     color: THEME_COLORS.textSecondary,
     letterSpacing: 0.8,
+  },
+  saveSnapshotTextLogged: {
+    color: THEME_COLORS.accentInTune,
+  },
+  demoToneButton: {
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME_COLORS.backgroundElevated,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.borderStrong,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  demoToneButtonActive: {
+    borderColor: THEME_COLORS.accentWarning,
+    backgroundColor: THEME_COLORS.backgroundInteractive,
+  },
+  demoToneText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME_COLORS.textSecondary,
+    letterSpacing: 0.6,
+  },
+  demoToneTextActive: {
+    color: THEME_COLORS.accentWarning,
   },
 });

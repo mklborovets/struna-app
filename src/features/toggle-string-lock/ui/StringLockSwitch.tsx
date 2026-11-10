@@ -41,7 +41,9 @@ export const StringLockSwitch: React.FC<StringLockSwitchProps> = ({
 
 const styles = StyleSheet.create({
   switchButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '48%',
     height: 46,
     flexDirection: 'row',
     alignItems: 'center',
