@@ -75,7 +75,7 @@ class StrunaAudioModule(
         captureThread?.stop()
         captureThread = null
         nativeResetEngine()
-        if (abandonAudioFocus) {
+        if (abandonAudioFocus && !nativeIsMetronomeActive()) {
             focusManager.abandonFocus()
         }
     }
@@ -93,11 +93,12 @@ class StrunaAudioModule(
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_FLOAT
             )
+            val safeMinBytes = if (minBufferBytes > 0) minBufferBytes else blockFrames * 4 * 4
             val track = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
                 .setAudioFormat(
@@ -107,7 +108,7 @@ class StrunaAudioModule(
                         .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                         .build()
                 )
-                .setBufferSizeInBytes(maxOf(minBufferBytes, blockFrames * 4 * 2))
+                .setBufferSizeInBytes(maxOf(safeMinBytes, blockFrames * 4 * 2))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
 
@@ -117,6 +118,7 @@ class StrunaAudioModule(
                     val rendered = nativeRenderMetronomeBlock(blockBuffer, blockFrames)
                     if (rendered) {
                         if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                            focusManager.requestFocus()
                             track.play()
                         }
                         track.write(blockBuffer, 0, blockFrames, AudioTrack.WRITE_BLOCKING)
@@ -124,6 +126,9 @@ class StrunaAudioModule(
                         if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
                             track.pause()
                             track.flush()
+                            if (captureThread?.isCapturing() != true) {
+                                focusManager.abandonFocus()
+                            }
                         }
                         Thread.sleep(25)
                     }
@@ -132,8 +137,11 @@ class StrunaAudioModule(
                 Thread.currentThread().interrupt()
             } catch (_: IllegalStateException) {
             } finally {
+                isMetronomePumpRunning.set(false)
                 try {
-                    track.stop()
+                    if (track.state == AudioTrack.STATE_INITIALIZED) {
+                        track.stop()
+                    }
                 } catch (_: IllegalStateException) {
                 }
                 track.release()
@@ -163,6 +171,7 @@ class StrunaAudioModule(
     private external fun nativeRenderMetronomeBlock(outputBuffer: FloatArray, frameCount: Int): Boolean
     private external fun nativeSetSampleRate(sampleRateHz: Float)
     private external fun nativeResetEngine()
+    private external fun nativeIsMetronomeActive(): Boolean
 
     companion object {
         init {

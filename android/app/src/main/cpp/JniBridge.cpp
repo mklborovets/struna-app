@@ -91,3 +91,12 @@ Java_com_struna_audio_StrunaAudioModule_nativeResetEngine(
     (void)thiz;
     getSharedHostObject()->resetEngine();
 }
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_struna_audio_StrunaAudioModule_nativeIsMetronomeActive(
+    JNIEnv* env,
+    jobject thiz) {
+    (void)env;
+    (void)thiz;
+    return getSharedHostObject()->isMetronomeActive() ? JNI_TRUE : JNI_FALSE;
+}

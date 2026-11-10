@@ -17,7 +17,7 @@ func StrunaIosResetEngine()
 public final class AudioCaptureService: NSObject {
     @objc public static let shared = AudioCaptureService()
 
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine = AVAudioEngine()
     private let sessionQueue = DispatchQueue(label: "com.struna.audio.session", qos: .userInteractive)
     private var metronomeSourceNode: AVAudioSourceNode?
     private var isTapInstalled = false
@@ -39,6 +39,10 @@ public final class AudioCaptureService: NSObject {
     @objc public func startCapture() -> Bool {
         var started = false
         sessionQueue.sync {
+            if self.isCaptureActive && self.isEngineRunning {
+                started = true
+                return
+            }
             self.isCaptureActive = true
             started = self.reconfigureEngineSynchronized()
             if !started {
@@ -51,6 +55,9 @@ public final class AudioCaptureService: NSObject {
     @objc public func stopCapture() {
         sessionQueue.sync {
             self.shouldResumeCaptureAfterInterruption = false
+            if !self.isCaptureActive {
+                return
+            }
             self.isCaptureActive = false
             StrunaIosResetEngine()
             _ = self.reconfigureEngineSynchronized()
@@ -58,13 +65,38 @@ public final class AudioCaptureService: NSObject {
     }
 
     @objc public func setMetronomeActive(_ active: Bool) {
-        sessionQueue.async {
+        sessionQueue.sync {
             if !active {
                 self.shouldResumeMetronomeAfterInterruption = false
             }
+            if self.isMetronomeActive == active {
+                if !active || (self.isEngineRunning && self.metronomeSourceNode != nil) {
+                    return
+                }
+            }
             self.isMetronomeActive = active
+            if self.isCaptureActive && self.isEngineRunning && self.metronomeSourceNode != nil {
+                return
+            }
             _ = self.reconfigureEngineSynchronized()
         }
+    }
+
+    private func detachAndResetEngineInstanceSynchronized() {
+        if isTapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            isTapInstalled = false
+        }
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        isEngineRunning = false
+        if let existingSource = metronomeSourceNode {
+            audioEngine.detach(existingSource)
+            metronomeSourceNode = nil
+        }
+        audioEngine.reset()
+        audioEngine = AVAudioEngine()
     }
 
     private func reconfigureEngineSynchronized() -> Bool {
@@ -75,23 +107,36 @@ public final class AudioCaptureService: NSObject {
             return true
         }
 
-        if isTapInstalled {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            isTapInstalled = false
-        }
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            isEngineRunning = false
-        }
-        if let existingSource = metronomeSourceNode {
-            audioEngine.detach(existingSource)
-            metronomeSourceNode = nil
+        detachAndResetEngineInstanceSynchronized()
+
+        if isCaptureActive {
+            if configureAndStartEngineSynchronized(enableCapture: true) {
+                return true
+            }
+            isCaptureActive = false
+            detachAndResetEngineInstanceSynchronized()
+            if !isMetronomeActive {
+                tearDownEngineSynchronized()
+                return false
+            }
         }
 
+        if isMetronomeActive {
+            if configureAndStartEngineSynchronized(enableCapture: false) {
+                return true
+            }
+            tearDownEngineSynchronized()
+            return false
+        }
+
+        return false
+    }
+
+    private func configureAndStartEngineSynchronized(enableCapture: Bool) -> Bool {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         do {
-            if isCaptureActive {
+            if enableCapture {
                 try session.setCategory(
                     .playAndRecord,
                     mode: .measurement,
@@ -104,10 +149,10 @@ public final class AudioCaptureService: NSObject {
                     options: [.mixWithOthers]
                 )
             }
-            try session.setPreferredSampleRate(48000.0)
-            try session.setPreferredIOBufferDuration(0.010)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-            if isCaptureActive {
+            try? session.setPreferredSampleRate(48000.0)
+            try? session.setPreferredIOBufferDuration(0.010)
+            try session.setActive(true)
+            if enableCapture {
                 let isUsingReceiver = session.currentRoute.outputs.contains {
                     $0.portType == .builtInReceiver
                 }
@@ -122,7 +167,7 @@ public final class AudioCaptureService: NSObject {
 
         var resolvedSampleRate: Double = 48000.0
 
-        if isCaptureActive {
+        if enableCapture {
             let inputNode = audioEngine.inputNode
             let hardwareFormat = inputNode.inputFormat(forBus: 0)
             guard hardwareFormat.sampleRate > 0, hardwareFormat.channelCount > 0 else {
@@ -145,6 +190,12 @@ public final class AudioCaptureService: NSObject {
             }
             isTapInstalled = true
         } else {
+            #if os(iOS)
+            let sessionRate = AVAudioSession.sharedInstance().sampleRate
+            if sessionRate > 0 {
+                resolvedSampleRate = sessionRate
+            }
+            #endif
             let outputFormat = audioEngine.outputNode.outputFormat(forBus: 0)
             if outputFormat.sampleRate > 0 {
                 resolvedSampleRate = outputFormat.sampleRate
@@ -160,11 +211,7 @@ public final class AudioCaptureService: NSObject {
             isEngineRunning = true
             return true
         } catch {
-            if isTapInstalled {
-                audioEngine.inputNode.removeTap(onBus: 0)
-                isTapInstalled = false
-            }
-            isEngineRunning = false
+            detachAndResetEngineInstanceSynchronized()
             return false
         }
     }
@@ -211,18 +258,7 @@ public final class AudioCaptureService: NSObject {
     }
 
     private func tearDownEngineSynchronized() {
-        if isTapInstalled {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            isTapInstalled = false
-        }
-        if audioEngine.isRunning {
-            audioEngine.stop()
-        }
-        isEngineRunning = false
-        if let existingSource = metronomeSourceNode {
-            audioEngine.detach(existingSource)
-            metronomeSourceNode = nil
-        }
+        detachAndResetEngineInstanceSynchronized()
         StrunaIosResetEngine()
 
         #if os(iOS)

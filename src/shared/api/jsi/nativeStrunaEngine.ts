@@ -31,9 +31,14 @@ const getNativeAudioModule = (): NativeStrunaAudioModuleSpec | undefined => {
   return modules.StrunaAudioModule;
 };
 
+const readGlobalEngine = (): StrunaJsiEngine | undefined => {
+  return globalThis.__StrunaEngine;
+};
+
 const resolveJsiEngine = (): StrunaJsiEngine | undefined => {
-  if (globalThis.__StrunaEngine !== undefined) {
-    return globalThis.__StrunaEngine;
+  const existing = readGlobalEngine();
+  if (existing !== undefined) {
+    return existing;
   }
 
   if (!jsiInstallAttempted) {
@@ -42,9 +47,17 @@ const resolveJsiEngine = (): StrunaJsiEngine | undefined => {
     if (nativeModule?.installJsiBindings) {
       nativeModule.installJsiBindings();
     }
+    const installed = readGlobalEngine();
+    if (installed) {
+      installed.setNoiseGateThresholdDb(fallbackGateDb);
+      installed.setMetronomeBpm(fallbackMetronomeBpm);
+      if (fallbackMetronomeActive) {
+        installed.setMetronomeActive(true);
+      }
+    }
   }
 
-  return globalThis.__StrunaEngine;
+  return readGlobalEngine();
 };
 
 export const nativeStrunaEngine: StrunaJsiEngine = {
