@@ -1,10 +1,18 @@
 #import <Foundation/Foundation.h>
+#if __has_include(<jsi/jsi.h>)
 #include <jsi/jsi.h>
+#elif __has_include("../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h")
+#include "../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h"
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 
+#if __has_include("StrunaHostObject.hpp")
 #include "StrunaHostObject.hpp"
+#else
+#include "../../cpp/jsi/StrunaHostObject.hpp"
+#endif
 
 @interface NSObject (StrunaAudioCaptureDynamic)
 + (instancetype)shared;

@@ -1,9 +1,40 @@
+#if __has_include(<jni.h>)
 #include <jni.h>
+#else
+#include <cstdint>
+#define JNIEXPORT
+#define JNICALL
+#define JNI_FALSE 0
+#define JNI_TRUE 1
+#define JNI_ABORT 2
+using jboolean = std::uint8_t;
+using jint = std::int32_t;
+using jlong = std::int64_t;
+using jfloat = float;
+struct _jobject;
+using jobject = _jobject*;
+struct _jfloatArray;
+using jfloatArray = _jfloatArray*;
+struct JNIEnv {
+    void* GetPrimitiveArrayCritical(void*, jboolean*) noexcept {
+        return nullptr;
+    }
+    void ReleasePrimitiveArrayCritical(void*, void*, jint) noexcept {}
+};
+#endif
+#if __has_include(<jsi/jsi.h>)
 #include <jsi/jsi.h>
+#elif __has_include("../../../../../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h")
+#include "../../../../../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h"
+#endif
 #include <cstddef>
 #include <memory>
 
+#if __has_include("StrunaHostObject.hpp")
 #include "StrunaHostObject.hpp"
+#else
+#include "../../../../../../cpp/jsi/StrunaHostObject.hpp"
+#endif
 
 namespace {
 
