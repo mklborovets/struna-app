@@ -15,6 +15,7 @@ import {
 import { THEME_COLORS } from '@/shared/config/theme';
 
 const MAX_NEEDLE_ANGLE_DEGREES = 45;
+const NEEDLE_PIVOT_OFFSET_Y = 46;
 
 export interface GaugeTickMark {
   readonly centsValue: number;
@@ -73,22 +74,26 @@ export const useGaugeInterpolation = ({
       -GAUGE_MAX_CENTS_RANGE,
       Math.min(GAUGE_MAX_CENTS_RANGE, centsShared.value)
     );
-    const deadzoneCents = Math.abs(clampedCents) < 0.35 ? 0 : clampedCents;
+    const deadzoneCents = Math.abs(clampedCents) < 0.45 ? 0 : clampedCents;
     const targetDegrees =
       (deadzoneCents / GAUGE_MAX_CENTS_RANGE) * MAX_NEEDLE_ANGLE_DEGREES;
 
     return withSpring(targetDegrees, {
-      damping: 22,
-      stiffness: 260,
-      mass: 0.45,
-      overshootClamping: false,
+      damping: 30,
+      stiffness: 210,
+      mass: 0.55,
+      overshootClamping: true,
     });
   });
 
   const needleAnimatedStyle = useAnimatedStyle<ViewStyle>(() => {
     'worklet';
     return {
-      transform: [{ rotate: `${smoothedAngleDeg.value}deg` }],
+      transform: [
+        { translateY: NEEDLE_PIVOT_OFFSET_Y },
+        { rotate: `${smoothedAngleDeg.value}deg` },
+        { translateY: -NEEDLE_PIVOT_OFFSET_Y },
+      ],
     };
   });
 

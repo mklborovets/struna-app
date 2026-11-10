@@ -34,16 +34,33 @@ const buildSvgWaveformPath = (samples: Float32Array): string => {
     return `M 0 ${HALF_CANVAS_HEIGHT} L ${CANVAS_WIDTH} ${HALF_CANVAS_HEIGHT}`;
   }
 
-  const parts: string[] = [];
-  for (let i = 0; i < length; i += 1) {
-    const sample = samples[i] ?? 0;
-    const x = ((i / (length - 1)) * CANVAS_WIDTH).toFixed(1);
-    const y = (
+  const getPoint = (idx: number): { x: number; y: number } => {
+    const sample = samples[idx] ?? 0;
+    const x = (idx / Math.max(1, length - 1)) * CANVAS_WIDTH;
+    const y =
       HALF_CANVAS_HEIGHT -
-      Math.max(-1, Math.min(1, sample)) * (HALF_CANVAS_HEIGHT - 8)
-    ).toFixed(1);
-    parts.push(`${i === 0 ? 'M' : 'L'} ${x} ${y}`);
+      Math.max(-1, Math.min(1, sample)) * (HALF_CANVAS_HEIGHT - 8);
+    return { x, y };
+  };
+
+  const first = getPoint(0);
+  const parts: string[] = [`M ${first.x.toFixed(1)} ${first.y.toFixed(1)}`];
+
+  for (let i = 1; i < length - 1; i += 1) {
+    const curr = getPoint(i);
+    const next = getPoint(i + 1);
+    const midX = (curr.x + next.x) * 0.5;
+    const midY = (curr.y + next.y) * 0.5;
+    parts.push(
+      `Q ${curr.x.toFixed(1)} ${curr.y.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`
+    );
   }
+
+  if (length > 1) {
+    const last = getPoint(length - 1);
+    parts.push(`L ${last.x.toFixed(1)} ${last.y.toFixed(1)}`);
+  }
+
   return parts.join(' ');
 };
 
@@ -98,7 +115,13 @@ export const useWaveformFrame = (
   const waveformBufferRef = useRef<Float32Array>(
     new Float32Array(WAVEFORM_SNAPSHOT_SIZE)
   );
+  const smoothedWaveformRef = useRef<Float32Array>(
+    new Float32Array(WAVEFORM_SNAPSHOT_SIZE)
+  );
   const spectrumBufferRef = useRef<Float32Array>(
+    new Float32Array(SPECTRUM_BIN_COUNT)
+  );
+  const smoothedSpectrumRef = useRef<Float32Array>(
     new Float32Array(SPECTRUM_BIN_COUNT)
   );
 
@@ -114,14 +137,27 @@ export const useWaveformFrame = (
     const intervalId = setInterval(() => {
       if (mode === 'waveform') {
         const waveformTarget = waveformBufferRef.current;
+        const smoothedWaveform = smoothedWaveformRef.current;
         nativeStrunaEngine.getWaveformSnapshot(waveformTarget);
-        setSvgWaveformPath(buildSvgWaveformPath(waveformTarget));
+        for (let i = 0; i < waveformTarget.length; i += 1) {
+          const prev = smoothedWaveform[i] ?? 0;
+          const next = waveformTarget[i] ?? 0;
+          smoothedWaveform[i] = prev * 0.38 + next * 0.62;
+        }
+        setSvgWaveformPath(buildSvgWaveformPath(smoothedWaveform));
       } else {
         const spectrumTarget = spectrumBufferRef.current;
+        const smoothedSpectrum = smoothedSpectrumRef.current;
         nativeStrunaEngine.getSpectrumSnapshot(spectrumTarget);
-        setSpectrumBars(buildSpectrumBarsFromNativeBins(spectrumTarget));
+        for (let i = 0; i < spectrumTarget.length; i += 1) {
+          const prev = smoothedSpectrum[i] ?? 0;
+          const next = spectrumTarget[i] ?? 0;
+          const alpha = next > prev ? 0.65 : 0.32;
+          smoothedSpectrum[i] = prev * (1 - alpha) + next * alpha;
+        }
+        setSpectrumBars(buildSpectrumBarsFromNativeBins(smoothedSpectrum));
       }
-    }, JSI_POLL_INTERVAL_MS * 2);
+    }, JSI_POLL_INTERVAL_MS);
 
     return () => {
       clearInterval(intervalId);

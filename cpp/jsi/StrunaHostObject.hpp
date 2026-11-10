@@ -1,5 +1,9 @@
 #pragma once
+#if __has_include(<jsi/jsi.h>)
 #include <jsi/jsi.h>
+#elif __has_include("../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h")
+#include "../../node_modules/react-native/ReactCommon/jsi/jsi/jsi.h"
+#endif
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -8,6 +12,7 @@
 #include <mutex>
 #include <vector>
 
+#if __has_include("AudioTypes.hpp")
 #include "AudioTypes.hpp"
 #include "MetronomeScheduler.hpp"
 #include "PitchStabilizer.hpp"
@@ -15,6 +20,15 @@
 #include "RmsGate.hpp"
 #include "SpectrumAnalyzer.hpp"
 #include "YinDetector.hpp"
+#else
+#include "../dsp/AudioTypes.hpp"
+#include "../dsp/MetronomeScheduler.hpp"
+#include "../dsp/PitchStabilizer.hpp"
+#include "../dsp/RingBuffer.hpp"
+#include "../dsp/RmsGate.hpp"
+#include "../dsp/SpectrumAnalyzer.hpp"
+#include "../dsp/YinDetector.hpp"
+#endif
 
 namespace struna {
 
@@ -55,12 +69,16 @@ public:
     float getMetronomeBpm() const noexcept;
     bool isMetronomeActive() const noexcept;
 
+    void setDemoMode(bool enabled, float frequencyHz = 110.0f) noexcept;
+    bool isDemoModeActive() const noexcept;
+
     static void install(
         facebook::jsi::Runtime& runtime,
         const std::shared_ptr<StrunaHostObject>& hostObject);
 
 private:
     float measureElapsedFrameMs() noexcept;
+    void synthesizeDemoSamplesLocked(std::size_t sampleCount) noexcept;
 
     mutable std::mutex dspMutex_;
     StartCaptureCallback onStartCapture_;
@@ -76,6 +94,9 @@ private:
     PitchStabilizer stabilizer_;
     SpectrumAnalyzer<> spectrumAnalyzer_;
     MetronomeScheduler metronomeScheduler_;
+    std::atomic<bool> isDemoMode_{false};
+    std::atomic<float> demoFrequencyHz_{110.0f};
+    float demoPhase_{0.0f};
 };
 
 }

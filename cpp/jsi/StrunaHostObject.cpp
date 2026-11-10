@@ -1,10 +1,11 @@
 #include "StrunaHostObject.hpp"
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <string>
-#include <utility>
+#include <string>   // IWYU pragma: keep
+#include <utility>  // IWYU pragma: keep
 
 namespace struna {
 
@@ -80,9 +81,9 @@ StrunaHostObject::StrunaHostObject(
       sampleRateHz_(48000.0f),
       lastPollTimestamp_(std::chrono::steady_clock::now()),
       hasPollTimestamp_(false),
-      rmsGate_(-52.0f),
+      rmsGate_(-58.0f),
       yinDetector_(48000.0f),
-      stabilizer_(80.0f, 0.85f, 0.45f),
+      stabilizer_(60.0f, 0.78f, 0.38f, 650.0f),
       spectrumAnalyzer_(),
       metronomeScheduler_(48000.0f) {}
 
@@ -95,6 +96,9 @@ void StrunaHostObject::setCaptureCallbacks(
 }
 
 void StrunaHostObject::pushAudioSamples(const float* samples, std::size_t count) noexcept {
+    if (isDemoMode_.load(std::memory_order_relaxed)) {
+        return;
+    }
     ringBuffer_.pushOverwrite(samples, count);
 }
 
@@ -108,9 +112,43 @@ void StrunaHostObject::setSampleRate(float sampleRateHz) noexcept {
 
 void StrunaHostObject::resetEngine() noexcept {
     std::lock_guard<std::mutex> lock(dspMutex_);
+    if (isDemoMode_.load(std::memory_order_relaxed)) {
+        return;
+    }
     ringBuffer_.clear();
     stabilizer_.reset();
     hasPollTimestamp_ = false;
+}
+
+void StrunaHostObject::synthesizeDemoSamplesLocked(std::size_t sampleCount) noexcept {
+    const float freq = demoFrequencyHz_.load(std::memory_order_relaxed);
+    const float sampleRate = sampleRateHz_.load(std::memory_order_relaxed);
+    if (freq <= 0.0f || sampleRate <= 0.0f || sampleCount == 0) {
+        return;
+    }
+
+    constexpr float kTwoPi = 6.28318530717958647692f;
+    const float phaseInc = (kTwoPi * freq) / sampleRate;
+    constexpr std::size_t kChunkCapacity = 512;
+    std::array<float, kChunkCapacity> chunk{};
+
+    std::size_t remaining = sampleCount;
+    while (remaining > 0) {
+        const std::size_t stepCount = std::min(remaining, kChunkCapacity);
+        for (std::size_t i = 0; i < stepCount; ++i) {
+            const float p = demoPhase_;
+            chunk[i] =
+                0.66f * std::sin(p) +
+                0.18f * std::sin(2.0f * p) +
+                0.06f * std::sin(3.0f * p);
+            demoPhase_ += phaseInc;
+            if (demoPhase_ >= kTwoPi) {
+                demoPhase_ -= kTwoPi;
+            }
+        }
+        ringBuffer_.pushOverwrite(chunk.data(), stepCount);
+        remaining -= stepCount;
+    }
 }
 
 float StrunaHostObject::measureElapsedFrameMs() noexcept {
@@ -129,6 +167,15 @@ float StrunaHostObject::measureElapsedFrameMs() noexcept {
 PitchFrame StrunaHostObject::pollPitchFrameNative() noexcept {
     std::lock_guard<std::mutex> lock(dspMutex_);
     const float frameDurationMs = measureElapsedFrameMs();
+
+    if (isDemoMode_.load(std::memory_order_relaxed)) {
+        const float sampleRate = sampleRateHz_.load(std::memory_order_relaxed);
+        const auto advanceSamples = std::clamp<std::size_t>(
+            static_cast<std::size_t>((sampleRate * frameDurationMs) / 1000.0f),
+            256,
+            1536);
+        synthesizeDemoSamplesLocked(advanceSamples);
+    }
 
     std::array<float, kDefaultAnalysisWindowSize> window{};
     if (!ringBuffer_.copyLatestWindow(window.data(), window.size())) {
@@ -163,9 +210,57 @@ void StrunaHostObject::copyWaveformSnapshotNative(
         return;
     }
 
+    constexpr std::size_t kSearchLimit = kDefaultAnalysisWindowSize / 2;
+    constexpr std::size_t kDisplaySpan = 768;
+
+    float maxAbs = 0.0f;
+    for (std::size_t i = 0; i < kSearchLimit; ++i) {
+        const float a = std::fabs(window[i]);
+        if (a > maxAbs) {
+            maxAbs = a;
+        }
+    }
+
+    if (maxAbs < 1.0e-4f) {
+        std::fill(targetBuffer, targetBuffer + length, 0.0f);
+        return;
+    }
+
+    float triggerStart = 0.0f;
+    for (std::size_t idx = 16; idx < kSearchLimit; ++idx) {
+        if (window[idx] <= 0.0f && window[idx + 1] > 0.0f) {
+            float minBefore = 0.0f;
+            for (std::size_t b = idx - 16; b <= idx; ++b) {
+                if (window[b] < minBefore) {
+                    minBefore = window[b];
+                }
+            }
+            float maxAfter = 0.0f;
+            const std::size_t lookaheadEnd = std::min<std::size_t>(idx + 96, window.size() - 1);
+            for (std::size_t f = idx + 1; f <= lookaheadEnd; ++f) {
+                if (window[f] > maxAfter) {
+                    maxAfter = window[f];
+                }
+            }
+            if (minBefore < -0.15f * maxAbs && maxAfter > 0.35f * maxAbs) {
+                const float denom = window[idx + 1] - window[idx];
+                const float frac = denom > 1.0e-6f ? (-window[idx] / denom) : 0.0f;
+                triggerStart = static_cast<float>(idx) + std::clamp(frac, 0.0f, 1.0f);
+                break;
+            }
+        }
+    }
+
+    const float step = static_cast<float>(kDisplaySpan) / static_cast<float>(length);
     for (std::size_t i = 0; i < length; ++i) {
-        const std::size_t sampleIdx = (i * window.size()) / length;
-        targetBuffer[i] = std::clamp(window[sampleIdx], -1.0f, 1.0f);
+        const float exactPos = triggerStart + static_cast<float>(i) * step;
+        const auto baseIdx = std::min<std::size_t>(
+            static_cast<std::size_t>(exactPos),
+            window.size() - 2);
+        const float frac = exactPos - static_cast<float>(baseIdx);
+        const float interpolated =
+            window[baseIdx] + frac * (window[baseIdx + 1] - window[baseIdx]);
+        targetBuffer[i] = std::clamp(interpolated, -1.0f, 1.0f);
     }
 }
 
@@ -221,6 +316,40 @@ bool StrunaHostObject::isMetronomeActive() const noexcept {
     return metronomeScheduler_.isActive();
 }
 
+void StrunaHostObject::setDemoMode(bool enabled, float frequencyHz) noexcept {
+    std::lock_guard<std::mutex> lock(dspMutex_);
+    const float validFreq = frequencyHz > 0.0f ? frequencyHz : 110.0f;
+    demoFrequencyHz_.store(validFreq, std::memory_order_relaxed);
+    isDemoMode_.store(enabled, std::memory_order_relaxed);
+    demoPhase_ = 0.0f;
+    ringBuffer_.clear();
+    stabilizer_.reset();
+
+    if (enabled) {
+        synthesizeDemoSamplesLocked(kDefaultAnalysisWindowSize * 2);
+        std::array<float, kDefaultAnalysisWindowSize> window{};
+        if (ringBuffer_.copyLatestWindow(window.data(), window.size())) {
+            float rmsDb = RmsGate::kSilenceFloorDb;
+            const bool aboveGate = rmsGate_.isAboveThreshold(window.data(), window.size(), rmsDb);
+            if (aboveGate) {
+                const auto detection = yinDetector_.detect(window.data(), window.size());
+                for (int i = 0; i < 4; ++i) {
+                    (void)stabilizer_.processFrame(
+                        detection.frequencyHz,
+                        detection.confidence,
+                        rmsDb,
+                        true,
+                        35.0f);
+                }
+            }
+        }
+    }
+}
+
+bool StrunaHostObject::isDemoModeActive() const noexcept {
+    return isDemoMode_.load(std::memory_order_relaxed);
+}
+
 std::vector<facebook::jsi::PropNameID> StrunaHostObject::getPropertyNames(
     facebook::jsi::Runtime& runtime) {
     return facebook::jsi::PropNameID::names(
@@ -232,7 +361,9 @@ std::vector<facebook::jsi::PropNameID> StrunaHostObject::getPropertyNames(
         "getSpectrumSnapshot",
         "setNoiseGateThresholdDb",
         "setMetronomeBpm",
-        "setMetronomeActive");
+        "setMetronomeActive",
+        "setDemoMode",
+        "isDemoModeActive");
 }
 
 facebook::jsi::Value StrunaHostObject::get(
@@ -392,6 +523,37 @@ facebook::jsi::Value StrunaHostObject::get(
                     setMetronomeActive(args[0].getBool());
                 }
                 return facebook::jsi::Value::undefined();
+            });
+    }
+
+    if (propName == "setDemoMode") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime,
+            name,
+            2,
+            [this](
+                facebook::jsi::Runtime&,
+                const facebook::jsi::Value&,
+                const facebook::jsi::Value* args,
+                std::size_t count) -> facebook::jsi::Value {
+                const bool enabled = count >= 1 && args[0].isBool() ? args[0].getBool() : false;
+                const float freq = count >= 2 && args[1].isNumber() ? static_cast<float>(args[1].asNumber()) : 110.0f;
+                setDemoMode(enabled, freq);
+                return facebook::jsi::Value::undefined();
+            });
+    }
+
+    if (propName == "isDemoModeActive") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime,
+            name,
+            0,
+            [this](
+                facebook::jsi::Runtime&,
+                const facebook::jsi::Value&,
+                const facebook::jsi::Value*,
+                std::size_t) -> facebook::jsi::Value {
+                return facebook::jsi::Value(isDemoModeActive());
             });
     }
 

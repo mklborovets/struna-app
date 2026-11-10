@@ -7,11 +7,14 @@ namespace struna {
 PitchStabilizer::PitchStabilizer(
     float attackSuppressionMs,
     float confidenceThreshold,
-    float smoothingFactor) noexcept
+    float smoothingFactor,
+    float holdDurationMs) noexcept
     : attackSuppressionMs_(attackSuppressionMs),
       confidenceThreshold_(confidenceThreshold),
       smoothingFactor_(smoothingFactor),
+      holdDurationMs_(holdDurationMs),
       activeSignalDurationMs_(0.0f),
+      elapsedHoldMs_(0.0f),
       smoothedFrequencyHz_(0.0f),
       windowCount_(0),
       windowWriteIndex_(0),
@@ -21,6 +24,7 @@ PitchStabilizer::PitchStabilizer(
 
 void PitchStabilizer::reset() noexcept {
     activeSignalDurationMs_ = 0.0f;
+    elapsedHoldMs_ = 0.0f;
     smoothedFrequencyHz_ = 0.0f;
     windowCount_ = 0;
     windowWriteIndex_ = 0;
@@ -36,30 +40,54 @@ void PitchStabilizer::setConfidenceThreshold(float threshold) noexcept {
     confidenceThreshold_ = std::clamp(threshold, 0.1f, 0.99f);
 }
 
+void PitchStabilizer::setHoldDurationMs(float durationMs) noexcept {
+    holdDurationMs_ = std::max(0.0f, durationMs);
+}
+
 PitchFrame PitchStabilizer::processFrame(
     float rawFrequencyHz,
     float confidence,
     float rmsDb,
     bool isAboveNoiseGate,
     float frameDurationMs) noexcept {
+    const float safeDtMs = std::max(0.0f, frameDurationMs);
+    const bool wasLocked = windowCount_ >= 3 && smoothedFrequencyHz_ > 0.0f;
+
     if (!isAboveNoiseGate) {
+        if (wasLocked && elapsedHoldMs_ + safeDtMs <= holdDurationMs_) {
+            elapsedHoldMs_ += safeDtMs;
+            return {smoothedFrequencyHz_, confidence, rmsDb, true};
+        }
         reset();
         return {0.0f, 0.0f, rmsDb, false};
     }
 
-    activeSignalDurationMs_ += std::max(0.0f, frameDurationMs);
+    activeSignalDurationMs_ += safeDtMs;
     if (activeSignalDurationMs_ < attackSuppressionMs_) {
         return {0.0f, confidence, rmsDb, false};
     }
 
-    if (rawFrequencyHz <= 0.0f || confidence < confidenceThreshold_) {
+    const float effectiveThreshold =
+        wasLocked ? std::max(0.55f, confidenceThreshold_ * 0.82f) : confidenceThreshold_;
+
+    if (rawFrequencyHz <= 0.0f || confidence < effectiveThreshold) {
+        if (wasLocked && elapsedHoldMs_ + safeDtMs <= holdDurationMs_) {
+            elapsedHoldMs_ += safeDtMs;
+            return {smoothedFrequencyHz_, confidence, rmsDb, true};
+        }
+        if (wasLocked) {
+            reset();
+            return {0.0f, 0.0f, rmsDb, false};
+        }
         return {smoothedFrequencyHz_, confidence, rmsDb, false};
     }
+
+    elapsedHoldMs_ = 0.0f;
 
     if (windowCount_ >= 3 && smoothedFrequencyHz_ > 0.0f &&
         isOctaveOutlier(rawFrequencyHz, smoothedFrequencyHz_)) {
         ++consecutiveOutlierCount_;
-        if (consecutiveOutlierCount_ < 3) {
+        if (consecutiveOutlierCount_ < 4) {
             return {smoothedFrequencyHz_, confidence, rmsDb, true};
         }
     } else {
@@ -80,13 +108,17 @@ PitchFrame PitchStabilizer::processFrame(
             std::fabs(medianFrequency - smoothedFrequencyHz_) / smoothedFrequencyHz_;
         if (relativeDiff > 0.08f) {
             smoothedFrequencyHz_ = medianFrequency;
+        } else if (relativeDiff < 0.008f) {
+            const float fineAlpha = std::min(smoothingFactor_, 0.22f);
+            smoothedFrequencyHz_ +=
+                fineAlpha * (medianFrequency - smoothedFrequencyHz_);
         } else {
             smoothedFrequencyHz_ +=
                 smoothingFactor_ * (medianFrequency - smoothedFrequencyHz_);
         }
     }
 
-    const bool isLocked = windowCount_ >= 3 && confidence >= confidenceThreshold_;
+    const bool isLocked = windowCount_ >= 3 && confidence >= effectiveThreshold;
     return {smoothedFrequencyHz_, confidence, rmsDb, isLocked};
 }
 

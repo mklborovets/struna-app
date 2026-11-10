@@ -85,6 +85,8 @@ class AudioCaptureThread(
 
                     if (samplesRead > 0) {
                         onSamplesCaptured(floatBuffer, samplesRead)
+                    } else {
+                        Thread.sleep(10)
                     }
                 }
             } catch (e: Exception) {
@@ -158,8 +160,8 @@ class AudioCaptureThread(
                 }
 
                 val bytesPerSample = if (encoding == AudioFormat.ENCODING_PCM_FLOAT) 4 else 2
-                val frameBufferBytes = frameBlockSize * bytesPerSample * 2
-                val bufferSizeInBytes = maxOf(minBufferBytes, frameBufferBytes)
+                val frameBufferBytes = frameBlockSize * bytesPerSample * 4
+                val bufferSizeInBytes = maxOf(minBufferBytes * 4, maxOf(frameBufferBytes, 8192))
 
                 for (source in audioSources) {
                     try {

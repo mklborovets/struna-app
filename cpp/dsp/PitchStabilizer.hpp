@@ -11,16 +11,19 @@ public:
     static constexpr float kDefaultAttackSuppressionMs = 80.0f;
     static constexpr float kDefaultConfidenceThreshold = 0.85f;
     static constexpr float kDefaultSmoothingFactor = 0.45f;
+    static constexpr float kDefaultHoldDurationMs = 650.0f;
 
     explicit PitchStabilizer(
         float attackSuppressionMs = kDefaultAttackSuppressionMs,
         float confidenceThreshold = kDefaultConfidenceThreshold,
-        float smoothingFactor = kDefaultSmoothingFactor) noexcept;
+        float smoothingFactor = kDefaultSmoothingFactor,
+        float holdDurationMs = kDefaultHoldDurationMs) noexcept;
 
     void reset() noexcept;
 
     void setAttackSuppressionMs(float durationMs) noexcept;
     void setConfidenceThreshold(float threshold) noexcept;
+    void setHoldDurationMs(float durationMs) noexcept;
 
     PitchFrame processFrame(
         float rawFrequencyHz,
@@ -36,8 +39,10 @@ private:
     float attackSuppressionMs_;
     float confidenceThreshold_;
     float smoothingFactor_;
+    float holdDurationMs_;
 
     float activeSignalDurationMs_;
+    float elapsedHoldMs_;
     float smoothedFrequencyHz_;
     std::size_t windowCount_;
     std::size_t windowWriteIndex_;

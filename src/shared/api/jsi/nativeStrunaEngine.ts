@@ -120,4 +120,19 @@ export const nativeStrunaEngine: StrunaJsiEngine = {
       engine.setMetronomeActive(fallbackMetronomeActive);
     }
   },
+
+  setDemoMode(enabled: boolean, frequencyHz?: number): void {
+    const engine = resolveJsiEngine();
+    if (engine && typeof engine.setDemoMode === 'function') {
+      engine.setDemoMode(enabled, frequencyHz ?? 110.0);
+    }
+  },
+
+  isDemoModeActive(): boolean {
+    const engine = resolveJsiEngine();
+    if (engine && typeof engine.isDemoModeActive === 'function') {
+      return engine.isDemoModeActive();
+    }
+    return false;
+  },
 };
