@@ -5,7 +5,10 @@ import {
   GuitarStringNumber,
   TuningPreset,
 } from '@/entities/tuning-preset';
-import { IN_TUNE_THRESHOLD_CENTS } from '@/shared/config/constants';
+import {
+  IN_TUNE_THRESHOLD_CENTS,
+  MAX_STRING_MATCH_CENTS,
+} from '@/shared/config/constants';
 
 export interface MatchedGuitarStringState {
   readonly matchedString: GuitarString | null;
@@ -85,7 +88,7 @@ export const useStringMatching = ({
       }
     }
 
-    if (smallestAbsCents > 150) {
+    if (smallestAbsCents > MAX_STRING_MATCH_CENTS) {
       return {
         matchedString: null,
         centsFromMatchedString: 0,

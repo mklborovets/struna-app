@@ -3,6 +3,7 @@ import {
   CLOSE_TUNE_THRESHOLD_CENTS,
   GAUGE_MAX_CENTS_RANGE,
   IN_TUNE_THRESHOLD_CENTS,
+  MAX_STRING_MATCH_CENTS,
   MIDI_A4_NOTE_NUMBER,
   SEMITONES_PER_OCTAVE,
 } from '@/shared/config/constants';
@@ -118,7 +119,7 @@ export const convertFrequencyToPitchReading = (
       const centsFromGuitarString = Math.abs(
         calculateCentsDeviation(frequencyHz, closestStringHz)
       );
-      if (centsFromGuitarString <= 150) {
+      if (centsFromGuitarString <= MAX_STRING_MATCH_CENTS) {
         matchedTargetHz = closestStringHz;
       }
     }
@@ -126,18 +127,10 @@ export const convertFrequencyToPitchReading = (
 
   const cents = calculateCentsDeviation(frequencyHz, matchedTargetHz);
 
-  const displayMidiNote =
-    matchedTargetHz !== standardNoteTargetHz
-      ? Math.round(
-          MIDI_A4_NOTE_NUMBER +
-            SEMITONES_PER_OCTAVE * Math.log2(matchedTargetHz / referenceA4Hz)
-        )
-      : nearestMidiNote;
-
   const noteIndex =
-    ((displayMidiNote % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) %
+    ((nearestMidiNote % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) %
     SEMITONES_PER_OCTAVE;
-  const octave = Math.floor(displayMidiNote / SEMITONES_PER_OCTAVE) - 1;
+  const octave = Math.floor(nearestMidiNote / SEMITONES_PER_OCTAVE) - 1;
   const resolvedNoteName = NOTE_NAMES[noteIndex] ?? 'A';
 
   return {
@@ -146,6 +139,6 @@ export const convertFrequencyToPitchReading = (
     cents,
     noteName: resolvedNoteName,
     octave,
-    midiNote: displayMidiNote,
+    midiNote: nearestMidiNote,
   };
 };

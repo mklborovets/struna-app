@@ -50,7 +50,7 @@ const resolveDeviationMeta = (
   if (absCents <= IN_TUNE_THRESHOLD_CENTS) {
     return { label: 'IN TUNE', color: THEME_COLORS.accentInTune };
   }
-  const direction = centsDeviation < 0 ? 'FLAT · TUNE UP' : 'SHARP · TUNE DOWN';
+  const direction = centsDeviation < 0 ? 'FLAT / TUNE UP' : 'SHARP / TUNE DOWN';
   const color =
     absCents <= CLOSE_TUNE_THRESHOLD_CENTS
       ? THEME_COLORS.accentWarning
@@ -66,8 +66,8 @@ const mapRecordToViewItem = (
   const timeLabel = formatLogTimestamp(record.createdAtIso);
   const titleText =
     record.stringLabel === 'CHM'
-      ? `Chromatic · Note ${record.noteName}`
-      : `String ${record.stringLabel} · Note ${record.noteName}`;
+      ? `Chromatic / Note ${record.noteName}`
+      : `String ${record.stringLabel} / Note ${record.noteName}`;
 
   return {
     id: record.id,
@@ -77,7 +77,7 @@ const mapRecordToViewItem = (
     measuredText: `${record.measuredFrequencyHz.toFixed(2)} Hz`,
     targetText: `${record.targetFrequencyHz.toFixed(2)} Hz`,
     deviationText: `${sign}${record.centsDeviation.toFixed(1)} cents`,
-    metadataText: `Tuning: ${record.presetName} · Ref A4 = ${record.referenceA4Hz} Hz${timeLabel ? ` · ${timeLabel}` : ''}`,
+    metadataText: `Tuning: ${record.presetName} / Ref A4 = ${record.referenceA4Hz} Hz${timeLabel ? ` / ${timeLabel}` : ''}`,
   };
 };
 

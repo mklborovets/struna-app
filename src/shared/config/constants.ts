@@ -19,6 +19,7 @@ export const CENTS_PER_SEMITONE = 100;
 export const IN_TUNE_THRESHOLD_CENTS = 2.0;
 export const CLOSE_TUNE_THRESHOLD_CENTS = 8.0;
 export const GAUGE_MAX_CENTS_RANGE = 50;
+export const MAX_STRING_MATCH_CENTS = 150;
 
 export const JSI_POLL_INTERVAL_MS = 33;
 export const WAVEFORM_SNAPSHOT_SIZE = 128;

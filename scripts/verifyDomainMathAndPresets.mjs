@@ -56,6 +56,17 @@ assert.equal(readingSharpA4.noteName, 'A');
 assert.equal(readingSharpA4.octave, 4);
 assert.equal(readingSharpA4.cents, 10.0);
 
+const detunedD3 = noteMath.convertFrequencyToPitchReading(
+  138.59,
+  440,
+  null,
+  [82.41, 110.0, 146.83, 196.0, 246.94, 329.63]
+);
+assert.equal(detunedD3.noteName, 'C#');
+assert.equal(detunedD3.octave, 3);
+assert.equal(detunedD3.targetFrequencyHz, 146.83);
+assert.ok(detunedD3.cents < -95 && detunedD3.cents > -105);
+
 const allPresets440 = presets.getAllCalibratedPresets(440);
 assert.equal(allPresets440.length, 6);
 
