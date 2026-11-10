@@ -124,6 +124,10 @@ export const useWaveformFrame = (
   const smoothedSpectrumRef = useRef<Float32Array>(
     new Float32Array(SPECTRUM_BIN_COUNT)
   );
+  const lastWaveformPathRef = useRef<string>(
+    `M 0 ${HALF_CANVAS_HEIGHT} L ${CANVAS_WIDTH} ${HALF_CANVAS_HEIGHT}`
+  );
+  const lastSpectrumSignatureRef = useRef<string>('');
 
   const toggleMode = useCallback(() => {
     setMode((prev) => (prev === 'waveform' ? 'spectrum' : 'waveform'));
@@ -142,9 +146,14 @@ export const useWaveformFrame = (
         for (let i = 0; i < waveformTarget.length; i += 1) {
           const prev = smoothedWaveform[i] ?? 0;
           const next = waveformTarget[i] ?? 0;
-          smoothedWaveform[i] = prev * 0.38 + next * 0.62;
+          const blended = prev * 0.38 + next * 0.62;
+          smoothedWaveform[i] = Math.abs(blended) < 1.0e-4 ? 0 : blended;
         }
-        setSvgWaveformPath(buildSvgWaveformPath(smoothedWaveform));
+        const nextPath = buildSvgWaveformPath(smoothedWaveform);
+        if (lastWaveformPathRef.current !== nextPath) {
+          lastWaveformPathRef.current = nextPath;
+          setSvgWaveformPath(nextPath);
+        }
       } else {
         const spectrumTarget = spectrumBufferRef.current;
         const smoothedSpectrum = smoothedSpectrumRef.current;
@@ -153,9 +162,15 @@ export const useWaveformFrame = (
           const prev = smoothedSpectrum[i] ?? 0;
           const next = spectrumTarget[i] ?? 0;
           const alpha = next > prev ? 0.65 : 0.32;
-          smoothedSpectrum[i] = prev * (1 - alpha) + next * alpha;
+          const blended = prev * (1 - alpha) + next * alpha;
+          smoothedSpectrum[i] = blended < 1.0e-4 ? 0 : blended;
         }
-        setSpectrumBars(buildSpectrumBarsFromNativeBins(smoothedSpectrum));
+        const nextBars = buildSpectrumBarsFromNativeBins(smoothedSpectrum);
+        const signature = nextBars.map((b) => b.height).join(',');
+        if (lastSpectrumSignatureRef.current !== signature) {
+          lastSpectrumSignatureRef.current = signature;
+          setSpectrumBars(nextBars);
+        }
       }
     }, JSI_POLL_INTERVAL_MS);
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { nativeStrunaEngine } from '@/shared/api/jsi';
 import {
   AUDIO_SAMPLE_RATE_HZ,
@@ -39,8 +40,15 @@ const resolveTempoMarking = (bpm: number): string => {
 };
 
 export const useMetronomePageModel = (): MetronomePageViewModel => {
-  const [bpm, setBpm] = useState<number>(DEFAULT_METRONOME_BPM);
-  const [isActive, setIsActive] = useState<boolean>(false);
+  const [bpm, setBpm] = useState<number>(() => {
+    const current = nativeStrunaEngine.getMetronomeBpm?.();
+    return current && current >= MIN_METRONOME_BPM && current <= MAX_METRONOME_BPM
+      ? Math.round(current)
+      : DEFAULT_METRONOME_BPM;
+  });
+  const [isActive, setIsActive] = useState<boolean>(() => {
+    return nativeStrunaEngine.isMetronomeActive?.() ?? false;
+  });
 
   const setExactBpm = useCallback((nextBpm: number) => {
     const clamped = Math.max(
@@ -59,17 +67,26 @@ export const useMetronomePageModel = (): MetronomePageViewModel => {
   );
 
   const toggleActive = useCallback(() => {
-    setIsActive((prev) => {
-      const next = !prev;
-      nativeStrunaEngine.setMetronomeActive(next);
-      return next;
-    });
-  }, []);
+    const next = !isActive;
+    setIsActive(next);
+    nativeStrunaEngine.setMetronomeActive(next);
+  }, [isActive]);
 
   useEffect(() => {
-    nativeStrunaEngine.setMetronomeBpm(DEFAULT_METRONOME_BPM);
+    const subscription = AppState.addEventListener(
+      'change',
+      (nextState: AppStateStatus) => {
+        if (nextState !== 'active') {
+          setIsActive(false);
+          nativeStrunaEngine.setMetronomeActive(false);
+        } else {
+          setIsActive(nativeStrunaEngine.isMetronomeActive?.() ?? false);
+        }
+      }
+    );
+
     return () => {
-      nativeStrunaEngine.setMetronomeActive(false);
+      subscription.remove();
     };
   }, []);
 

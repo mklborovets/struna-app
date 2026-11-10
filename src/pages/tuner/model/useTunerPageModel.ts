@@ -225,9 +225,19 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     matchedString: GuitarString | null;
     cents: number;
   } | null>(null);
+  const loggedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hasSnapshotToLog, setHasSnapshotToLog] = useState<boolean>(false);
   const [isSessionJustLogged, setIsSessionJustLogged] =
     useState<boolean>(false);
+
+  useEffect(() => {
+    return () => {
+      if (loggedTimeoutRef.current !== null) {
+        clearTimeout(loggedTimeoutRef.current);
+      }
+      nativeStrunaEngine.setDemoMode?.(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (pitchStream.isLocked && pitchStream.reading) {
@@ -286,8 +296,12 @@ export const useTunerPageModel = (): TunerPageViewModel => {
     });
 
     setIsSessionJustLogged(true);
-    setTimeout(() => {
+    if (loggedTimeoutRef.current !== null) {
+      clearTimeout(loggedTimeoutRef.current);
+    }
+    loggedTimeoutRef.current = setTimeout(() => {
       setIsSessionJustLogged(false);
+      loggedTimeoutRef.current = null;
     }, 1200);
   }, [
     activePreset.id,

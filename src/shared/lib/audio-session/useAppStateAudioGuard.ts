@@ -63,6 +63,11 @@ export const useAppStateAudioGuard = ({
   }, []);
 
   useEffect(() => {
+    if (appState !== 'active') {
+      nativeStrunaEngine.setMetronomeActive(false);
+      nativeStrunaEngine.setDemoMode?.(false);
+    }
+
     const canCaptureNow =
       isPermissionGranted && isCaptureRequested && appState === 'active';
 
