@@ -14,7 +14,7 @@ public:
     static constexpr float kDefaultBpm = 120.0f;
     static constexpr float kDownbeatFrequencyHz = 1320.0f;
     static constexpr float kSubbeatFrequencyHz = 880.0f;
-    static constexpr float kClickDurationSeconds = 0.025f;
+    static constexpr float kClickDurationSeconds = 0.045f;
     static constexpr float kTwoPi = 6.28318530717958647692f;
     static constexpr std::uint32_t kBeatsPerBar = 4;
 
@@ -93,8 +93,11 @@ public:
                 const float timeSec =
                     static_cast<float>(cursor) / currentSampleRateHz;
                 const float envelope =
-                    std::exp(-timeSec * 140.0f);
-                outputSamples[i] = 0.8f * envelope * std::sin(kTwoPi * toneHz * timeSec);
+                    std::exp(-timeSec * 65.0f);
+                const float phase = kTwoPi * toneHz * timeSec;
+                const float waveform =
+                    0.75f * std::sin(phase) + 0.25f * std::sin(2.0f * phase);
+                outputSamples[i] = 0.95f * envelope * waveform;
             } else {
                 outputSamples[i] = 0.0f;
             }

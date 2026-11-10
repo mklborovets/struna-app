@@ -64,6 +64,12 @@ public final class AudioCaptureService: NSObject {
             try session.setPreferredSampleRate(48000.0)
             try session.setPreferredIOBufferDuration(0.010)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            let isUsingReceiver = session.currentRoute.outputs.contains {
+                $0.portType == .builtInReceiver
+            }
+            if isUsingReceiver {
+                try? session.overrideOutputAudioPort(.speaker)
+            }
         } catch {
             return false
         }
@@ -130,18 +136,30 @@ public final class AudioCaptureService: NSObject {
                   let dataPtr = firstBuffer.mData?.assumingMemoryBound(to: Float.self) else {
                 return noErr
             }
-            let count = Int32(frameCount)
-            let rendered = StrunaIosRenderMetronomeBlock(dataPtr, count)
+            let frameLength = Int(frameCount)
+            let rendered = StrunaIosRenderMetronomeBlock(dataPtr, Int32(frameCount))
             if !rendered {
-                for i in 0..<Int(frameCount) {
+                for i in 0..<frameLength {
                     dataPtr[i] = 0.0
+                }
+            }
+            if ablPointer.count > 1 {
+                for bufIdx in 1..<ablPointer.count {
+                    if let chPtr = ablPointer[bufIdx].mData?.assumingMemoryBound(to: Float.self) {
+                        for i in 0..<frameLength {
+                            chPtr[i] = dataPtr[i]
+                        }
+                    }
                 }
             }
             return noErr
         }
 
+        sourceNode.volume = 1.0
+        audioEngine.mainMixerNode.outputVolume = 1.0
         audioEngine.attach(sourceNode)
         audioEngine.connect(sourceNode, to: audioEngine.mainMixerNode, format: renderFormat)
+        audioEngine.connect(audioEngine.mainMixerNode, to: audioEngine.outputNode, format: nil)
         metronomeSourceNode = sourceNode
     }
 
